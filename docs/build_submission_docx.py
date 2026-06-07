@@ -171,13 +171,14 @@ doc.add_paragraph(
 
 add_heading("Dataset Used", level=1)
 doc.add_paragraph(
-    "The dataset used is the German subset of DocLayNet, the large public "
-    "document-image corpus released by IBM Research under the "
-    "CDLA-Permissive-1.0 license. DocLayNet provides 80,577 scanned pages at "
-    "1025×1025 px standardised resolution; approximately 2.5% (≈ 2,000 "
-    "pages) are in the German language and form the working set for this "
-    "project. Each page is labelled with one of six document-source "
-    "categories that map directly to functional document types:"
+    "The dataset used is DocLayNet-base, the Parquet-format mid-size variant "
+    "of DocLayNet released by IBM Research under the CDLA-Permissive-1.0 "
+    "license. DocLayNet-base provides 8,057 scanned pages at 1025×1025 px "
+    "standardised resolution (train 6,910; validation 648; test 499) and is "
+    "small enough to download in full on a Kaggle GPU notebook while still "
+    "covering all six functional document categories. Each page is labelled "
+    "with one of six document-source categories that map directly to "
+    "functional document types:"
 )
 classes = [
     "financial_reports (annual reports, SEC filings)",
@@ -191,16 +192,34 @@ for c in classes:
     doc.add_paragraph(c, style="List Bullet")
 
 doc.add_paragraph(
-    "The German subset is extracted via a layered filter: (1) a "
-    "collection-based filter for EU TED and German legal sources, (2) a "
-    "filename heuristic matching German publisher patterns, and (3) a "
-    "langdetect fallback on the extracted page text. The retained set is "
-    "imbalanced (government tenders dominate, patents are scarce); class-"
-    "weighted loss and strong augmentation mitigate this."
+    "DocLayNet does not expose an explicit language field. Approximately "
+    "2.5 % of pages across the full DocLayNet corpus are in German; the "
+    "remainder are multilingual with English dominant. The CNN classifier "
+    "treats document type from visual layout independently of language, so "
+    "training on the full base corpus is appropriate and the trained model "
+    "remains directly applicable to German document routing pipelines."
 )
 doc.add_paragraph(
-    "Link – DocLayNet (HuggingFace): "
-    "https://huggingface.co/datasets/pierreguillou/DocLayNet-large"
+    "Link – DocLayNet-base (HuggingFace): "
+    "https://huggingface.co/datasets/pierreguillou/DocLayNet-base"
+)
+
+add_heading("Implementation Note on Dataset Pivot", level=2)
+doc.add_paragraph(
+    "The original Phase 2 proposal targeted the ≈ 2,000 German pages within "
+    "DocLayNet-large (≈ 80k pages). During implementation it became clear "
+    "that DocLayNet-large is only distributed via a custom Python loading "
+    "script that fails in streaming mode (FileNotFoundError on remote "
+    "zip://...::https://... URLs), and is incompatible with `datasets` 4.x "
+    "which dropped script-based loaders altogether. The closest viable "
+    "Parquet variant, DocLayNet-base, contains roughly 8,057 pages — too "
+    "small for a robust German-only training run after filtering. The "
+    "practical implementation therefore trains on the full DocLayNet-base "
+    "corpus across all six document types. The CNN architecture, transfer-"
+    "learning protocol, evaluation metrics, and Grad-CAM analysis are "
+    "unchanged from the proposal; only the language-filter step is dropped. "
+    "The motivation for German document routing remains the principal "
+    "downstream use case for the trained classifier."
 )
 
 # ---------------------------------------------------------------------------
@@ -234,14 +253,15 @@ for rq in rqs:
 add_heading("Proposed Methodology", level=1)
 doc.add_paragraph(
     "The methodology compares a custom CNN against a ResNet50 transfer "
-    "learning model on the German subset of DocLayNet to test both "
-    "predictive performance and robustness. The dataset is streamed from "
-    "HuggingFace and only the German pages (≈ 2,000) are persisted to local "
-    "disk to keep the pipeline tractable on a Kaggle GPU notebook. "
-    "Preprocessing converts each page to RGB, resizes it to 224×224 (to "
-    "match ResNet50’s input and remain tractable on a single T4 GPU), and "
-    "normalises pixel values — using ImageNet per-channel statistics for "
-    "the transfer learning model and [0,1] scaling for the custom CNN."
+    "learning model on DocLayNet-base to test both predictive performance "
+    "and robustness. The dataset (≈ 8,000 pages, six document types) is "
+    "downloaded from HuggingFace as a Parquet dataset and persisted as "
+    "224×224 JPEGs on local Kaggle storage so the downstream tf.data "
+    "pipelines can iterate the files lazily. Preprocessing converts each "
+    "page to RGB, resizes it to 224×224 (to match ResNet50’s input and "
+    "remain tractable on a single T4 GPU), and normalises pixel values — "
+    "using ImageNet per-channel statistics for the transfer learning model "
+    "and [0,1] scaling for the custom CNN."
 )
 doc.add_paragraph(
     "Class labels are integer-encoded in the canonical order "

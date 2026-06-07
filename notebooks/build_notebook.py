@@ -51,10 +51,8 @@ model, and evaluates robustness to phone-camera-style degradations.
 md("## 0. Environment setup\n\nInstall any libraries not pre-installed on Kaggle.")
 
 code(
-    """# Pin datasets<4.0 — DocLayNet still uses a script-based loader, which
-# datasets 4.x removed support for. After running this cell, restart the
-# kernel (Run → Restart & Run All) so Python picks up the pinned version.
-!pip install -q "datasets<4.0" langdetect"""
+    """# DocLayNet-base is a Parquet dataset — no loader script, no version pin needed.
+!pip install -q -U datasets"""
 )
 
 code(
@@ -114,99 +112,56 @@ CLASS_NAMES = [
 # ---------------------------------------------------------------------------
 
 md(
-    """## 1. Load DocLayNet and filter for German documents
+    """## 1. Load DocLayNet-base and persist images
 
-DocLayNet does not expose an explicit language field. We extract the German subset
-in three layered passes:
-1. **Collection-based filter** — EU TED tenders and German legal/financial sources.
-2. **Filename heuristic** — `*_de_*`, `*_de.pdf`, German publisher stems.
-3. **Text-based fallback** — `langdetect` on concatenated page text.
+We use `pierreguillou/DocLayNet-base` — a Parquet-format subset of DocLayNet
+with ~8,000 pages spread across the same six functional categories. It has no
+custom loader script (no `trust_remote_code`) and is small enough to download
+fully on a Kaggle GPU notebook.
 
-We **stream** from HuggingFace so we do not download the full 37.6 GB corpus.
-Only retained German pages are saved to local disk as JPEGs.
+> **Note on the original German-filter plan.** The proposal originally targeted
+> the ≈ 2,000 German pages inside DocLayNet-large. That variant's loader script
+> is broken in streaming mode (`FileNotFoundError` on `zip://...::https://...`
+> URLs), so we pivoted to DocLayNet-base and train on the full 8k corpus.
+> The CNN methodology, evaluation, and Grad-CAM analysis are unchanged.
 """
 )
 
 code(
     """from datasets import load_dataset
-from langdetect import detect, DetectorFactory
-DetectorFactory.seed = 0
 
-# Collection / filename markers that are reliable indicators of German content.
-# Tune these patterns as needed during runs by inspecting the printed examples below.
-GERMAN_COLLECTION_PATTERNS = ('TED', 'eur-lex_de', 'bundes', 'german', '_de_')
-GERMAN_FILENAME_PATTERNS   = ('_de_', '_de.pdf', 'deutsch', 'bundes', 'german')
-
-def looks_german_by_metadata(row):
-    coll = (row.get('collection') or '').lower()
-    fn   = (row.get('original_filename') or '').lower()
-    if any(p in coll for p in GERMAN_COLLECTION_PATTERNS):
-        return True
-    if any(p in fn for p in GERMAN_FILENAME_PATTERNS):
-        return True
-    return False
-
-def looks_german_by_text(row, min_chars=200):
-    texts = row.get('texts') or []
-    joined = ' '.join(texts)[:5000]
-    if len(joined) < min_chars:
-        return False
-    try:
-        return detect(joined) == 'de'
-    except Exception:
-        return False
+# Download all three Parquet splits (~8k pages total). Stable on Kaggle disk.
+ds = load_dataset('pierreguillou/DocLayNet-base')
+print({k: len(v) for k, v in ds.items()})
 """
 )
 
 code(
-    """# Stream DocLayNet-large; persist only the German subset to disk.
-# Set MAX_GERMAN to None to keep every German page found.
-from itertools import chain
+    """# Persist each page as a 224x224 JPEG and build the index used by every
+# downstream cell. We pool train/validation/test here and re-split later with
+# our own stratified 70/15/15 so the methodology matches the proposal.
+INDEX = []
+t0 = time.time()
+for split_name in ('train', 'validation', 'test'):
+    split = ds[split_name]
+    for i, row in enumerate(split):
+        label = row['doc_category']
+        out   = DATA_DIR / label
+        out.mkdir(exist_ok=True)
+        img_path = out / f"{split_name}_{i:05d}.jpg"
+        if not img_path.exists():
+            row['image'].convert('RGB').resize(
+                (IMG_SIZE, IMG_SIZE)
+            ).save(img_path, 'JPEG', quality=92)
+        INDEX.append({'path': str(img_path), 'label': label})
+        if (i + 1) % 500 == 0:
+            print(f'  {split_name}: {i + 1:,} / {len(split):,} '
+                  f'· total kept {len(INDEX):,} · {time.time() - t0:.0f}s')
 
-MAX_GERMAN = 2500
-GERMAN_INDEX = []
-
-def _stream_split(split_name):
-    # DocLayNet uses a custom loader script (trust_remote_code).
-    # The split='train+validation+test' shorthand isn't supported by this
-    # loader, so iterate splits separately and chain them.
-    return load_dataset(
-        'pierreguillou/DocLayNet-large',
-        split=split_name,
-        streaming=True,
-        trust_remote_code=True,
-    )
-
-ds_stream = chain(
-    _stream_split('train'),
-    _stream_split('validation'),
-    _stream_split('test'),
-)
-
-t0 = time.time(); seen = 0; kept = 0
-for row in ds_stream:
-    seen += 1
-    is_de = looks_german_by_metadata(row) or looks_german_by_text(row)
-    if not is_de:
-        continue
-
-    label = row['doc_category']
-    img   = row['image']
-    out   = DATA_DIR / label
-    out.mkdir(exist_ok=True)
-    img_path = out / f"{row['page_hash'][:16]}_{row['page_no']}.jpg"
-    if not img_path.exists():
-        img.convert('RGB').resize((IMG_SIZE, IMG_SIZE)).save(img_path, 'JPEG', quality=92)
-    GERMAN_INDEX.append({'path': str(img_path), 'label': label})
-    kept += 1
-    if MAX_GERMAN and kept >= MAX_GERMAN:
-        break
-    if seen % 5000 == 0:
-        print(f'  scanned {seen:,} rows · kept {kept:,} German pages · {time.time()-t0:.0f}s')
-
-print(f'Done. Scanned {seen:,} rows, kept {kept:,} German pages in {time.time()-t0:.0f}s.')
-index_df = pd.DataFrame(GERMAN_INDEX)
-index_df.to_csv(DATA_DIR / 'german_index.csv', index=False)
+index_df = pd.DataFrame(INDEX)
+index_df.to_csv(DATA_DIR / 'index.csv', index=False)
+print(f'Total pages: {len(index_df):,}  ·  classes: '
+      f'{sorted(index_df[\"label\"].unique())}')
 index_df.head()
 """
 )
