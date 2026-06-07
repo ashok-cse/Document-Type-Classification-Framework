@@ -204,22 +204,37 @@ doc.add_paragraph(
     "https://huggingface.co/datasets/pierreguillou/DocLayNet-base"
 )
 
-add_heading("Implementation Note on Dataset Pivot", level=2)
+add_heading("Implementation Note on Dataset Loading", level=2)
 doc.add_paragraph(
     "The original Phase 2 proposal targeted the ≈ 2,000 German pages within "
-    "DocLayNet-large (≈ 80k pages). During implementation it became clear "
-    "that DocLayNet-large is only distributed via a custom Python loading "
-    "script that fails in streaming mode (FileNotFoundError on remote "
-    "zip://...::https://... URLs), and is incompatible with `datasets` 4.x "
-    "which dropped script-based loaders altogether. The closest viable "
-    "Parquet variant, DocLayNet-base, contains roughly 8,057 pages — too "
-    "small for a robust German-only training run after filtering. The "
-    "practical implementation therefore trains on the full DocLayNet-base "
-    "corpus across all six document types. The CNN architecture, transfer-"
-    "learning protocol, evaluation metrics, and Grad-CAM analysis are "
-    "unchanged from the proposal; only the language-filter step is dropped. "
-    "The motivation for German document routing remains the principal "
-    "downstream use case for the trained classifier."
+    "DocLayNet-large (≈ 80k pages). Two upstream bugs in the public DocLayNet "
+    "HuggingFace distributions forced a two-step pivot during implementation:"
+)
+doc.add_paragraph(
+    "(1) DocLayNet-large is distributed only via a custom Python loading "
+    "script. In streaming mode that script raises FileNotFoundError on "
+    "remote zip://...::https://... URLs (it expects the zip to be already "
+    "extracted locally), and the script-based loader format itself is "
+    "rejected by the current `datasets` ≥ 4.0 library."
+)
+doc.add_paragraph(
+    "(2) The mid-size variant DocLayNet-base also ships a custom loader "
+    "script, which fails during Arrow conversion with "
+    "`ArrowInvalid: Float value … was truncated converting to int64` — its "
+    "declared schema casts bounding-box coordinates to int64 while the "
+    "underlying data contains floats."
+)
+doc.add_paragraph(
+    "The notebook therefore bypasses `datasets.load_dataset` entirely. It "
+    "uses `huggingface_hub.hf_hub_download` to pull the underlying "
+    "`dataset_base.zip` (~3.8 GB), extracts it into Kaggle working storage, "
+    "walks the JSON annotation files for the `doc_category` label, locates "
+    "the matching PNG, and persists each page as a 224×224 JPEG. The CNN "
+    "architecture, transfer-learning protocol, evaluation metrics, and "
+    "Grad-CAM analysis are unchanged from the proposal; only the language "
+    "filter is dropped (no public language-tagged DocLayNet variant is "
+    "currently maintained). The motivation for German document routing "
+    "remains the principal downstream use case for the trained classifier."
 )
 
 # ---------------------------------------------------------------------------

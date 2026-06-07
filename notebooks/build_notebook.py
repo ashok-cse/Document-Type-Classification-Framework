@@ -51,8 +51,9 @@ model, and evaluates robustness to phone-camera-style degradations.
 md("## 0. Environment setup\n\nInstall any libraries not pre-installed on Kaggle.")
 
 code(
-    """# DocLayNet-base is a Parquet dataset — no loader script, no version pin needed.
-!pip install -q -U datasets"""
+    """# huggingface_hub is pre-installed on Kaggle; no installs needed for the
+# data pipeline. We still rely on the standard ML libraries below.
+!pip install -q -U huggingface_hub"""
 )
 
 code(
@@ -112,56 +113,127 @@ CLASS_NAMES = [
 # ---------------------------------------------------------------------------
 
 md(
-    """## 1. Load DocLayNet-base and persist images
+    """## 1. Download and parse DocLayNet-base directly
 
-We use `pierreguillou/DocLayNet-base` — a Parquet-format subset of DocLayNet
-with ~8,000 pages spread across the same six functional categories. It has no
-custom loader script (no `trust_remote_code`) and is small enough to download
-fully on a Kaggle GPU notebook.
+We use the data files of `pierreguillou/DocLayNet-base` — ~8,000 pages across
+the six DocLayNet categories.
 
-> **Note on the original German-filter plan.** The proposal originally targeted
-> the ≈ 2,000 German pages inside DocLayNet-large. That variant's loader script
-> is broken in streaming mode (`FileNotFoundError` on `zip://...::https://...`
-> URLs), so we pivoted to DocLayNet-base and train on the full 8k corpus.
-> The CNN methodology, evaluation, and Grad-CAM analysis are unchanged.
+> **Note on dataset loading.** Both `pierreguillou/DocLayNet-large` and
+> `pierreguillou/DocLayNet-base` ship with custom HuggingFace loader scripts
+> that are currently broken: the large variant fails in streaming mode with
+> `FileNotFoundError` on `zip://...::https://...` URLs, and the base variant
+> fails on a pyarrow type-cast (`Float value … was truncated converting to
+> int64`). To make the notebook robust against these upstream bugs we
+> bypass `datasets.load_dataset` entirely: we download the data ZIP from
+> the HuggingFace Hub directly, extract it, and walk the on-disk JSON
+> annotations to build the page index. The CNN methodology, evaluation,
+> and Grad-CAM analysis are unchanged.
 """
 )
 
 code(
-    """from datasets import load_dataset
+    """import zipfile
+from huggingface_hub import hf_hub_download
 
-# Download all three Parquet splits (~8k pages total). Stable on Kaggle disk.
-ds = load_dataset('pierreguillou/DocLayNet-base')
-print({k: len(v) for k, v in ds.items()})
+# 1. Download the data ZIP from the HuggingFace Hub (bypasses the broken
+#    loader script). Cached in /kaggle/working so it survives session restarts.
+HF_CACHE = WORK_DIR / '.hf_cache'
+HF_CACHE.mkdir(exist_ok=True)
+
+zip_path = hf_hub_download(
+    repo_id='pierreguillou/DocLayNet-base',
+    filename='data/dataset_base.zip',
+    repo_type='dataset',
+    cache_dir=str(HF_CACHE),
+)
+print(f'ZIP at: {zip_path}')
+
+# 2. Extract once (idempotent).
+EXTRACT_DIR = WORK_DIR / 'doclaynet_extracted'
+sentinel = EXTRACT_DIR / '.extracted'
+if not sentinel.exists():
+    EXTRACT_DIR.mkdir(exist_ok=True)
+    print('Extracting ~3.8 GB (~30 s)...')
+    with zipfile.ZipFile(zip_path) as zf:
+        zf.extractall(EXTRACT_DIR)
+    sentinel.touch()
+    print('Extracted.')
+else:
+    print('Already extracted.')
+
+# 3. Probe the top-level layout so the parsing in the next cell is robust
+#    against minor structural differences between dataset variants.
+top = sorted(p.name for p in EXTRACT_DIR.iterdir() if not p.name.startswith('.'))
+print('Top-level entries:', top[:10])
 """
 )
 
 code(
-    """# Persist each page as a 224x224 JPEG and build the index used by every
-# downstream cell. We pool train/validation/test here and re-split later with
-# our own stratified 70/15/15 so the methodology matches the proposal.
+    """# 4. Walk the extracted tree for JSON annotations, read the doc_category,
+#    locate the matching PNG, resize it to 224x224 and save as JPEG. Build the
+#    index_df used by every downstream cell.
+import json
+
+# DocLayNet annotation JSONs sit next to their PNGs and contain the
+# doc_category in metadata. We support a couple of layout variants.
+def _doc_category(meta: dict) -> str | None:
+    md_block = meta.get('metadata') or {}
+    return (md_block.get('doc_category')
+            or meta.get('doc_category')
+            or md_block.get('original-category-doc'))
+
+all_jsons = list(EXTRACT_DIR.rglob('*.json'))
+print(f'Found {len(all_jsons):,} JSON annotations.')
+
 INDEX = []
+missing_png = 0
+no_category = 0
 t0 = time.time()
-for split_name in ('train', 'validation', 'test'):
-    split = ds[split_name]
-    for i, row in enumerate(split):
-        label = row['doc_category']
-        out   = DATA_DIR / label
-        out.mkdir(exist_ok=True)
-        img_path = out / f"{split_name}_{i:05d}.jpg"
-        if not img_path.exists():
-            row['image'].convert('RGB').resize(
-                (IMG_SIZE, IMG_SIZE)
-            ).save(img_path, 'JPEG', quality=92)
-        INDEX.append({'path': str(img_path), 'label': label})
-        if (i + 1) % 500 == 0:
-            print(f'  {split_name}: {i + 1:,} / {len(split):,} '
-                  f'· total kept {len(INDEX):,} · {time.time() - t0:.0f}s')
+
+for j_path in all_jsons:
+    # Pull the doc_category out of the JSON.
+    try:
+        with open(j_path) as f:
+            meta = json.load(f)
+    except (json.JSONDecodeError, OSError):
+        continue
+    doc_cat = _doc_category(meta)
+    if not doc_cat:
+        no_category += 1
+        continue
+
+    # Locate the corresponding PNG. Common layouts: same dir with .png,
+    # or sibling 'PNG' / 'images' directory.
+    candidates = [
+        j_path.with_suffix('.png'),
+        j_path.parent.parent / 'PNG' / (j_path.stem + '.png'),
+        j_path.parent.parent / 'images' / (j_path.stem + '.png'),
+    ]
+    png_path = next((p for p in candidates if p.exists()), None)
+    if png_path is None:
+        missing_png += 1
+        continue
+
+    # Persist as a 224x224 RGB JPEG in DATA_DIR/<class>/<id>.jpg.
+    out_dir = DATA_DIR / doc_cat
+    out_dir.mkdir(exist_ok=True)
+    out_jpg = out_dir / f'{png_path.stem}.jpg'
+    if not out_jpg.exists():
+        Image.open(png_path).convert('RGB').resize(
+            (IMG_SIZE, IMG_SIZE), Image.BILINEAR
+        ).save(out_jpg, 'JPEG', quality=92)
+    INDEX.append({'path': str(out_jpg), 'label': doc_cat})
+
+    if len(INDEX) % 500 == 0:
+        print(f'  kept {len(INDEX):,}  ·  {time.time() - t0:.0f}s')
+
+print(f'Done in {time.time() - t0:.0f}s. '
+      f'Kept {len(INDEX):,} pages. missing_png={missing_png} no_category={no_category}')
 
 index_df = pd.DataFrame(INDEX)
 index_df.to_csv(DATA_DIR / 'index.csv', index=False)
-print(f'Total pages: {len(index_df):,}  ·  classes: '
-      f'{sorted(index_df[\"label\"].unique())}')
+print(f'Classes seen: {sorted(index_df[\"label\"].unique())}')
+print(index_df['label'].value_counts())
 index_df.head()
 """
 )
