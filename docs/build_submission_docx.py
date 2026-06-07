@@ -17,7 +17,7 @@ PROGRAM = "M.Sc. Software Engineering"
 INSTITUTION = "University of Europe for Applied Sciences, Potsdam"
 SUPERVISOR = "Raja Hashim Ali"
 DATE = "08.06.2026"
-GITHUB_URL = "https://github.com/<your-username>/dtcf"
+GITHUB_URL = "https://github.com/ashok-cse/PR_SE26_German_Document_Type_Classification_with_CNNs"
 KAGGLE_URL = "https://www.kaggle.com/code/ashokkrcse/notebook7fbaa26367"
 
 OUT_PATH = Path(__file__).resolve().parent / (
