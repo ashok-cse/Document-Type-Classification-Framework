@@ -1,0 +1,432 @@
+"""Build the Phase 2 submission .docx in the same style as the example
+(Sathyamurthi Karthikeyan's submission). Run via:
+
+    uv run --with python-docx python docs/build_submission_docx.py
+"""
+
+from pathlib import Path
+
+from docx import Document
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.shared import Pt, Inches
+
+
+STUDENT = "Ashok Kumar Meena"
+TITLE = "German Document Type Classification using CNNs"
+PROGRAM = "M.Sc. Software Engineering"
+INSTITUTION = "University of Europe for Applied Sciences, Potsdam"
+SUPERVISOR = "Raja Hashim Ali"
+DATE = "08.06.2026"
+GITHUB_URL = "https://github.com/<your-username>/dtcf"
+KAGGLE_URL = "https://www.kaggle.com/code/ashokkrcse/notebook7fbaa26367"
+
+OUT_PATH = Path(__file__).resolve().parent / (
+    f"Phase 2 - Proposal and Code Implementation - {STUDENT}.docx"
+)
+
+doc = Document()
+
+# Default body font
+style = doc.styles["Normal"]
+style.font.name = "Calibri"
+style.font.size = Pt(11)
+
+
+def add_heading(text: str, level: int = 1) -> None:
+    h = doc.add_heading(text, level=level)
+    for run in h.runs:
+        run.font.name = "Calibri"
+
+
+def add_para(text: str, *, bold: bool = False, align=None, size: int | None = None) -> None:
+    p = doc.add_paragraph()
+    if align is not None:
+        p.alignment = align
+    run = p.add_run(text)
+    run.bold = bold
+    if size is not None:
+        run.font.size = Pt(size)
+
+
+# ---------------------------------------------------------------------------
+# Title page
+# ---------------------------------------------------------------------------
+
+for _ in range(2):
+    doc.add_paragraph()
+
+add_para(TITLE, bold=True, align=WD_ALIGN_PARAGRAPH.CENTER, size=20)
+for _ in range(3):
+    doc.add_paragraph()
+
+add_para(f"Submitted By: {STUDENT}", align=WD_ALIGN_PARAGRAPH.CENTER, size=14)
+for _ in range(3):
+    doc.add_paragraph()
+
+add_para(PROGRAM, align=WD_ALIGN_PARAGRAPH.CENTER, size=12)
+add_para(INSTITUTION, align=WD_ALIGN_PARAGRAPH.CENTER, size=12)
+for _ in range(3):
+    doc.add_paragraph()
+
+add_para(f"Supervisor: {SUPERVISOR}", align=WD_ALIGN_PARAGRAPH.CENTER, size=12)
+add_para(f"Date: {DATE}", align=WD_ALIGN_PARAGRAPH.CENTER, size=12)
+
+doc.add_page_break()
+
+# ---------------------------------------------------------------------------
+# Contents
+# ---------------------------------------------------------------------------
+
+add_heading("Contents", level=1)
+toc_entries = [
+    ("Background and Motivation", 3),
+    ("Problem Statement", 3),
+    ("Dataset Used", 4),
+    ("Research Questions", 4),
+    ("Proposed Methodology", 5),
+    ("CNN Model Design", 5),
+    ("Transfer Learning Model", 5),
+    ("Evaluation Metrics", 6),
+    ("Expected Results", 6),
+]
+for name, page in toc_entries:
+    p = doc.add_paragraph()
+    run = p.add_run(f"{name}\t{page}")
+    run.font.size = Pt(11)
+
+doc.add_page_break()
+
+# ---------------------------------------------------------------------------
+# Background and Motivation
+# ---------------------------------------------------------------------------
+
+add_heading("Background and Motivation", level=1)
+doc.add_paragraph(
+    "Document classification plays a vital role in digitisation pipelines of "
+    "administrative, legal, scientific, and financial archives. German-speaking "
+    "institutions such as the Deutsche Digitale Bibliothek, the Bundesarchiv, "
+    "EU tender portals, and German regulatory bodies process millions of "
+    "scanned pages every year. Once a document is scanned, the very first "
+    "downstream decision is almost always — what kind of document is this? "
+    "Routing an invoice differs from routing a patent, which again differs "
+    "from routing a regulatory notice. Doing this routing manually is slow, "
+    "expensive, and error-prone, and is therefore an ideal task to automate "
+    "with image-based machine learning."
+)
+doc.add_paragraph(
+    "Most published work on document image classification has focused on "
+    "English-language benchmarks such as RVL-CDIP and Tobacco-3482. German "
+    "documents pose a visually distinct problem: longer compound words alter "
+    "line-wrapping patterns, German official documents use different masthead "
+    "and header conventions, and legal Verordnungen carry different paragraph "
+    "densities than scientific Fachartikel. A model trained purely on English "
+    "documents may not transfer cleanly to these layouts. The previous "
+    "biometric- and OCR-based pipelines for archive routing relied on "
+    "text-only features and were sensitive to scan quality. Image-based "
+    "classification using Convolutional Neural Networks (CNNs) solves this "
+    "by reading the visual layout — masthead position, column structure, "
+    "table density, figure placement — directly from the page, in a way "
+    "that does not depend on perfect OCR."
+)
+doc.add_paragraph(
+    "The most recent advancements include applying transfer learning "
+    "(ResNet, EfficientNet, ViT) to document images, which gives better "
+    "results with much less training data. This project applies these "
+    "concepts specifically to the German subset of DocLayNet to build and "
+    "rigorously evaluate a CNN-based classifier for German scanned documents."
+)
+
+# ---------------------------------------------------------------------------
+# Problem Statement
+# ---------------------------------------------------------------------------
+
+add_heading("Problem Statement", level=1)
+doc.add_paragraph(
+    "German document classification is one of the most important and growing "
+    "tasks for automating archive workflows in German-speaking institutions. "
+    "Traditional approaches using OCR plus rule-based text classifiers find "
+    "it difficult to cope with poor scan quality, mixed German fonts, and "
+    "the strong layout variability across categories such as financial "
+    "reports, manuals, patents, and government tenders. CNN-based "
+    "classification solves this problem by extracting spatial features "
+    "directly from the page image: the convolution layers learn local "
+    "layout features, pooling layers reduce dimensionality, the fully "
+    "connected layers combine the features, and the softmax layer "
+    "produces a probability distribution over the six document types."
+)
+doc.add_paragraph(
+    "Given a single-page scanned German document image x, the system "
+    "predicts its document type y from six DocLayNet categories: "
+    "financial_reports, scientific_articles, laws_and_regulations, "
+    "government_tenders, manuals, and patents. Only visual layout features "
+    "are used — no OCR text features are introduced. We train a custom CNN "
+    "from scratch as a baseline and compare it against a ResNet50 transfer "
+    "learning model (ImageNet pre-trained) to measure the gap and the "
+    "robustness of each approach to phone-camera-style image degradations."
+)
+
+# ---------------------------------------------------------------------------
+# Dataset Used
+# ---------------------------------------------------------------------------
+
+add_heading("Dataset Used", level=1)
+doc.add_paragraph(
+    "The dataset used is the German subset of DocLayNet, the large public "
+    "document-image corpus released by IBM Research under the "
+    "CDLA-Permissive-1.0 license. DocLayNet provides 80,577 scanned pages at "
+    "1025×1025 px standardised resolution; approximately 2.5% (≈ 2,000 "
+    "pages) are in the German language and form the working set for this "
+    "project. Each page is labelled with one of six document-source "
+    "categories that map directly to functional document types:"
+)
+classes = [
+    "financial_reports (annual reports, SEC filings)",
+    "scientific_articles (research papers)",
+    "laws_and_regulations (statutes, FAA regulations, compliance documents)",
+    "government_tenders (EU TED tender documents)",
+    "manuals (technical documentation, user guides)",
+    "patents (granted patents)",
+]
+for c in classes:
+    doc.add_paragraph(c, style="List Bullet")
+
+doc.add_paragraph(
+    "The German subset is extracted via a layered filter: (1) a "
+    "collection-based filter for EU TED and German legal sources, (2) a "
+    "filename heuristic matching German publisher patterns, and (3) a "
+    "langdetect fallback on the extracted page text. The retained set is "
+    "imbalanced (government tenders dominate, patents are scarce); class-"
+    "weighted loss and strong augmentation mitigate this."
+)
+doc.add_paragraph(
+    "Link – DocLayNet (HuggingFace): "
+    "https://huggingface.co/datasets/pierreguillou/DocLayNet-large"
+)
+
+# ---------------------------------------------------------------------------
+# Research Questions
+# ---------------------------------------------------------------------------
+
+add_heading("Research Questions", level=1)
+rqs = [
+    "How accurately can CNN-based models classify German scanned documents "
+    "into the six DocLayNet categories using only visual layout features?",
+    "Which model family — a custom CNN trained from scratch on the small "
+    "German subset, or a ResNet50 fine-tuned from ImageNet — gives the best "
+    "balance between predictive performance and computational efficiency?",
+    "How do preprocessing, data augmentation, and class-imbalance handling "
+    "influence overall accuracy and per-class robustness?",
+    "Do Grad-CAM explanations show that the trained models attend to "
+    "meaningful page regions (mastheads, headers, table boundaries) when "
+    "predicting the document type?",
+    "How robust is the best model to phone-camera-style degradations "
+    "(perspective warp, JPEG compression, Gaussian blur, brightness shift) "
+    "that simulate the visual gap between flatbed scans and mobile-phone "
+    "captures of paper documents?",
+]
+for rq in rqs:
+    doc.add_paragraph(rq, style="List Bullet")
+
+# ---------------------------------------------------------------------------
+# Proposed Methodology
+# ---------------------------------------------------------------------------
+
+add_heading("Proposed Methodology", level=1)
+doc.add_paragraph(
+    "The methodology compares a custom CNN against a ResNet50 transfer "
+    "learning model on the German subset of DocLayNet to test both "
+    "predictive performance and robustness. The dataset is streamed from "
+    "HuggingFace and only the German pages (≈ 2,000) are persisted to local "
+    "disk to keep the pipeline tractable on a Kaggle GPU notebook. "
+    "Preprocessing converts each page to RGB, resizes it to 224×224 (to "
+    "match ResNet50’s input and remain tractable on a single T4 GPU), and "
+    "normalises pixel values — using ImageNet per-channel statistics for "
+    "the transfer learning model and [0,1] scaling for the custom CNN."
+)
+doc.add_paragraph(
+    "Class labels are integer-encoded in the canonical order "
+    "(financial_reports = 0 … patents = 5). The split is stratified: 70 % "
+    "training, 15 % validation, 15 % test. To address the natural class "
+    "imbalance, class-weighted categorical cross-entropy is used "
+    "(weight = total / (n_classes × class_count)). Training-time "
+    "augmentation reduces overfitting through small random rotations, "
+    "translations, zooms, and brightness shifts."
+)
+doc.add_paragraph(
+    "The transfer learning model uses ResNet50 with ImageNet pre-trained "
+    "weights for faster convergence and better feature extraction. The "
+    "model is trained with the Adam optimiser, a batch size of 32, and "
+    "early stopping monitored on validation accuracy. ResNet50 is trained "
+    "in two stages: first the classifier head is trained while the "
+    "backbone is frozen (10 epochs, lr = 1e-3), and then the last residual "
+    "block (conv5_*) is unfrozen and fine-tuned (20 epochs, lr = 1e-5). "
+    "Evaluation reports precision, recall, F1-score, overall accuracy, ROC "
+    "curves with macro and per-class AUC, the confusion matrix to inspect "
+    "misclassification patterns, and Grad-CAM heatmaps to visualise which "
+    "page regions the model attended to."
+)
+
+# ---------------------------------------------------------------------------
+# CNN Model Design
+# ---------------------------------------------------------------------------
+
+add_heading("CNN Model Design", level=1)
+doc.add_paragraph(
+    "The custom CNN is designed as a deliberately simple baseline so the "
+    "value of transfer learning can be quantified. The input layer accepts "
+    "224×224×3 RGB images. The convolutional body is organised as four "
+    "blocks with 32, 64, 128, and 256 filters respectively; each block "
+    "uses a 3×3 convolution, batch normalisation, ReLU activation, and "
+    "2×2 max-pooling. Global average pooling is then used to flatten the "
+    "feature map into a vector (which keeps the parameter count low and "
+    "reduces overfitting risk on this small dataset). A fully connected "
+    "dense layer with 128 units and ReLU activation is followed by a "
+    "Dropout(0.5) layer to reduce overfitting, and finally a Dense(6) "
+    "layer with softmax activation produces the per-class probability "
+    "distribution. The total parameter count is approximately 1 million, "
+    "and the model is trained from scratch with the Adam optimiser at a "
+    "learning rate of 1e-3."
+)
+
+# ---------------------------------------------------------------------------
+# Transfer Learning Model
+# ---------------------------------------------------------------------------
+
+add_heading("Transfer Learning Model", level=1)
+doc.add_paragraph(
+    "ResNet50 is used as the transfer learning model for classifying the "
+    "German document images. ResNet50 uses ImageNet pre-trained weights and "
+    "a custom classification head consisting of Global Average Pooling, a "
+    "Dense layer with 256 units and ReLU activation, Dropout(0.4) to "
+    "reduce overfitting, and a final Dense(6) layer with softmax output. "
+    "Training proceeds in two stages: in Stage A the backbone is frozen "
+    "and only the classifier head is trained; in Stage B the final residual "
+    "block (conv5_*) is unfrozen and fine-tuned at a much smaller learning "
+    "rate (1e-5) so the pre-trained features are refined without being "
+    "destroyed. This two-stage strategy is well-suited to a small target "
+    "dataset like our German subset and reduces the risk of catastrophic "
+    "forgetting."
+)
+
+# ---------------------------------------------------------------------------
+# Evaluation Metrics
+# ---------------------------------------------------------------------------
+
+add_heading("Evaluation Metrics", level=1)
+doc.add_paragraph(
+    "The models are evaluated using overall accuracy, precision, recall, "
+    "and F1-score (macro-averaged because of the class imbalance) to "
+    "measure label correctness, model sensitivity, and the harmonic mean "
+    "of precision and recall, respectively. A confusion matrix (both "
+    "absolute counts and row-normalised) is used to analyse misclass-"
+    "ification patterns across the six classes. ROC curves are plotted "
+    "in a one-vs-rest formulation for multi-class evaluation; the True "
+    "Positive Rate vs. False Positive Rate curve is shown per class, and "
+    "the area under the curve (AUC) is reported per class and macro-"
+    "averaged. Model efficiency is measured using the total number of "
+    "trainable parameters and the per-step training time. Robustness is "
+    "additionally measured on a phone-camera-simulated test set, and the "
+    "drop in macro-F1 between clean and simulated images is reported."
+)
+
+# ---------------------------------------------------------------------------
+# Expected Results
+# ---------------------------------------------------------------------------
+
+add_heading("Expected Results", level=1)
+doc.add_paragraph(
+    "Both models are trained on the German subset of DocLayNet (≈ 2,000 "
+    "pages after filtering, split 70/15/15) with class-weighted "
+    "cross-entropy and the augmentations described above. Reported numbers "
+    "below are preliminary expected values; the final values from the "
+    "Kaggle run will be inserted before submission."
+)
+doc.add_paragraph(
+    "The Custom CNN is expected to give a training accuracy in the range "
+    "0.78 – 0.85, validation accuracy in the range 0.70 – 0.78, and a "
+    "test macro-F1 in the range 0.65 – 0.75. It is the smallest model "
+    "with about 1 M parameters and the fastest per-step training time "
+    "(~ 18 ms/step on a T4 GPU)."
+)
+doc.add_paragraph(
+    "The ResNet50 transfer-learning model is expected to give a training "
+    "accuracy in the range 0.92 – 0.97, validation accuracy in the range "
+    "0.85 – 0.92, and a test macro-F1 in the range 0.82 – 0.90 after the "
+    "two-stage training. It is the larger model with about 25 M parameters "
+    "and a slower per-step training time (~ 55 ms/step on a T4 GPU)."
+)
+doc.add_paragraph(
+    "Under the phone-camera-style robustness evaluation, a macro-F1 drop "
+    "of 5 – 12 percentage points is expected for both models, with the "
+    "ResNet50 model expected to degrade more gracefully than the custom "
+    "CNN. Grad-CAM heatmaps are expected to highlight masthead and header "
+    "regions for laws_and_regulations and government_tenders, and the "
+    "tabular financial-disclosure regions for financial_reports."
+)
+
+# Figures — embed each PNG followed by its centred caption.
+add_heading("Figures", level=1)
+doc.add_paragraph(
+    "Figure values below are preliminary placeholders generated to illustrate "
+    "the expected output of the pipeline. After the Kaggle training run, the "
+    "same PNG filenames under figures/ will be overwritten with the real "
+    "outputs and the document can be rebuilt to pick them up."
+)
+
+FIG_DIR = Path(__file__).resolve().parent.parent / "figures"
+figure_specs = [
+    ("f1_class_distribution.png", "Fig 1. German subset class distribution."),
+    ("f2_sample_per_class.png", "Fig 2. Sample German page per class (placeholder)."),
+    ("f3_custom_cnn_curves.png",
+     "Fig 3. Custom CNN training and validation accuracy and loss curves."),
+    ("f4_resnet50_curves.png",
+     "Fig 4. ResNet50 training and validation accuracy and loss curves "
+     "(Stages A and B)."),
+    ("f5_custom_cnn_confusion.png",
+     "Fig 5. Custom CNN confusion matrix (counts and row-normalised)."),
+    ("f6_custom_cnn_roc.png",
+     "Fig 6. Custom CNN ROC curves (False Positive vs True Positive) with "
+     "per-class AUC."),
+    ("f7_resnet50_confusion.png",
+     "Fig 7. ResNet50 confusion matrix (counts and row-normalised)."),
+    ("f8_resnet50_roc.png",
+     "Fig 8. ResNet50 ROC curves (False Positive vs True Positive) with "
+     "per-class AUC."),
+    ("f9_model_comparison.png",
+     "Fig 9. Model comparison: accuracy, macro-F1, and macro-AUC for "
+     "Custom CNN vs. ResNet50."),
+    ("f10_gradcam.png",
+     "Fig 10. Grad-CAM overlays for ResNet50, one example page per class "
+     "(placeholder)."),
+    ("f11_robustness.png",
+     "Fig 11. Robustness comparison: clean macro-F1 vs. phone-camera-"
+     "simulated macro-F1."),
+]
+
+for filename, caption in figure_specs:
+    img_path = FIG_DIR / filename
+    if img_path.exists():
+        p = doc.add_paragraph()
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        p.add_run().add_picture(str(img_path), width=Inches(6.0))
+    cap_p = doc.add_paragraph(caption)
+    cap_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    for run in cap_p.runs:
+        run.italic = True
+    doc.add_paragraph()  # spacing between figures
+
+# ---------------------------------------------------------------------------
+# Links
+# ---------------------------------------------------------------------------
+
+add_heading("Repository and Notebook Links", level=1)
+doc.add_paragraph(f"GitHub – {GITHUB_URL}")
+doc.add_paragraph(f"Kaggle – {KAGGLE_URL}")
+
+
+# ---------------------------------------------------------------------------
+# Save
+# ---------------------------------------------------------------------------
+
+doc.save(OUT_PATH)
+print(f"Wrote {OUT_PATH}")

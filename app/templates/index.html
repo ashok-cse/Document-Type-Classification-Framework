@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DTCF — German Document Classifier</title>
+  <style>
+    :root {
+      --bg: #0f1115;
+      --panel: #171a21;
+      --border: #262a33;
+      --text: #e6e8eb;
+      --muted: #8b919c;
+      --accent: #4f8cff;
+      --accent-soft: #1d3a73;
+      --bar-bg: #1f242d;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 48px 16px;
+    }
+    .container { width: 100%; max-width: 880px; }
+    header { margin-bottom: 24px; }
+    header h1 { margin: 0 0 6px 0; font-size: 26px; font-weight: 600; }
+    header p { margin: 0; color: var(--muted); font-size: 14px; }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 16px;
+    }
+
+    .dropzone {
+      border: 2px dashed var(--border);
+      border-radius: 10px;
+      padding: 36px 16px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .dropzone:hover, .dropzone.dragover {
+      border-color: var(--accent);
+      background: rgba(79, 140, 255, 0.05);
+    }
+    .dropzone p { margin: 6px 0; color: var(--muted); font-size: 14px; }
+    .dropzone strong { color: var(--text); }
+
+    #fileInput { display: none; }
+    button.btn {
+      background: var(--accent);
+      color: white;
+      border: 0;
+      border-radius: 8px;
+      padding: 10px 18px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      margin-top: 12px;
+    }
+    button.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .preview {
+      display: none;
+      margin-top: 16px;
+      text-align: center;
+    }
+    .preview img {
+      max-width: 100%;
+      max-height: 320px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+    }
+
+    .result h3 { margin: 0 0 4px 0; font-size: 16px; }
+    .result .top {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      padding: 14px 16px;
+      background: var(--accent-soft);
+      border-radius: 8px;
+      margin-bottom: 16px;
+    }
+    .result .top .cls { font-size: 18px; font-weight: 600; }
+    .result .top .conf { font-size: 16px; color: var(--text); }
+
+    .bar-row { display: flex; align-items: center; margin: 6px 0; font-size: 13px; }
+    .bar-row .name { width: 200px; color: var(--muted); }
+    .bar-row .bar {
+      flex: 1;
+      height: 8px;
+      background: var(--bar-bg);
+      border-radius: 4px;
+      overflow: hidden;
+      margin: 0 12px;
+    }
+    .bar-row .bar > div { height: 100%; background: var(--accent); }
+    .bar-row .pct { width: 56px; text-align: right; color: var(--text); }
+
+    .footer { color: var(--muted); font-size: 12px; text-align: center; margin-top: 32px; }
+    .footer code { background: var(--panel); padding: 2px 6px; border-radius: 4px; }
+    .error {
+      background: #3a1a1a;
+      border: 1px solid #6b2a2a;
+      padding: 10px 14px;
+      border-radius: 8px;
+      color: #ffb3b3;
+      font-size: 14px;
+    }
+    .spinner {
+      display: inline-block;
+      width: 14px; height: 14px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      vertical-align: middle;
+      margin-right: 8px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>DTCF — German Document Type Classifier</h1>
+      <p>Upload a scanned German document page. The model predicts one of six categories from DocLayNet.</p>
+    </header>
+
+    <div class="panel">
+      <label class="dropzone" id="dropzone" for="fileInput">
+        <p><strong>Click to choose a file</strong> or drag-and-drop an image here</p>
+        <p>Supported: JPG, PNG. The image is resized to 224×224 for the model.</p>
+      </label>
+      <input type="file" id="fileInput" accept="image/*" />
+      <div class="preview" id="preview">
+        <img id="previewImg" alt="preview" />
+        <div><button class="btn" id="predictBtn">Classify</button></div>
+      </div>
+      <div id="error" style="margin-top: 16px;"></div>
+    </div>
+
+    <div class="panel result" id="resultPanel" style="display:none;">
+      <h3>Prediction</h3>
+      <div class="top">
+        <span class="cls" id="topClass">—</span>
+        <span class="conf" id="topConf">—</span>
+      </div>
+      <h3>All classes</h3>
+      <div id="bars"></div>
+    </div>
+
+    <p class="footer">
+      API: <code>POST /predict</code> · health: <code>GET /health</code> · classes: <code>GET /classes</code>
+    </p>
+  </div>
+
+  <script>
+    const dropzone = document.getElementById('dropzone');
+    const fileInput = document.getElementById('fileInput');
+    const preview = document.getElementById('preview');
+    const previewImg = document.getElementById('previewImg');
+    const predictBtn = document.getElementById('predictBtn');
+    const errorBox = document.getElementById('error');
+    const resultPanel = document.getElementById('resultPanel');
+    const topClass = document.getElementById('topClass');
+    const topConf = document.getElementById('topConf');
+    const bars = document.getElementById('bars');
+    let currentFile = null;
+
+    function showFile(file) {
+      currentFile = file;
+      const reader = new FileReader();
+      reader.onload = (e) => { previewImg.src = e.target.result; preview.style.display = 'block'; };
+      reader.readAsDataURL(file);
+      errorBox.innerHTML = '';
+    }
+
+    fileInput.addEventListener('change', (e) => {
+      if (e.target.files.length) showFile(e.target.files[0]);
+    });
+    dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('dragover'); });
+    dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+    dropzone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropzone.classList.remove('dragover');
+      if (e.dataTransfer.files.length) showFile(e.dataTransfer.files[0]);
+    });
+
+    predictBtn.addEventListener('click', async () => {
+      if (!currentFile) return;
+      predictBtn.disabled = true;
+      predictBtn.innerHTML = '<span class="spinner"></span>Classifying';
+      errorBox.innerHTML = '';
+      const form = new FormData();
+      form.append('file', currentFile);
+      try {
+        const res = await fetch('/predict', { method: 'POST', body: form });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({ detail: res.statusText }));
+          throw new Error(err.detail || 'Request failed');
+        }
+        const data = await res.json();
+        renderResult(data);
+      } catch (e) {
+        errorBox.innerHTML = `<div class="error">Error: ${e.message}</div>`;
+      } finally {
+        predictBtn.disabled = false;
+        predictBtn.textContent = 'Classify';
+      }
+    });
+
+    function renderResult(data) {
+      topClass.textContent = data.predicted_class;
+      topConf.textContent = (data.confidence * 100).toFixed(1) + '%';
+      const entries = Object.entries(data.all_probabilities)
+        .sort((a, b) => b[1] - a[1]);
+      bars.innerHTML = entries.map(([name, p]) => `
+        <div class="bar-row">
+          <div class="name">${name}</div>
+          <div class="bar"><div style="width:${(p * 100).toFixed(1)}%"></div></div>
+          <div class="pct">${(p * 100).toFixed(1)}%</div>
+        </div>`).join('');
+      resultPanel.style.display = 'block';
+    }
+  </script>
+</body>
+</html>

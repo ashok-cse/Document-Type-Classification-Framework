@@ -1,0 +1,24 @@
+# Keep the build context small.
+.git
+.gitignore
+__pycache__
+*.pyc
+.venv
+venv
+.ipynb_checkpoints
+
+# Training artefacts — the inference image doesn't need any of these.
+notebooks/
+data/
+figures/
+models/
+docs/
+proposal.md
+README.md
+requirements.txt
+
+# Editor / OS
+.DS_Store
+.vscode/
+.idea/
+.claude/
