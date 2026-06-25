@@ -3,6 +3,7 @@ __pycache__/
 *.py[cod]
 *.egg-info/
 .venv/
+.venv*/
 venv/
 .ipynb_checkpoints/
 
@@ -12,6 +13,13 @@ data/*
 models/
 *.keras
 *.h5
+notebooks/.hf_cache/
+notebooks/doclaynet_extracted/
+notebooks/german_docs/
+notebooks/figures/
+notebooks/*.executed.ipynb
+.keras/
+.jupyter/
 
 # Figures are committed (placeholder set ships, real run overwrites later).
 
