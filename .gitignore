@@ -13,6 +13,10 @@ data/*
 models/
 *.keras
 *.h5
+!models/
+!models/resnet50.keras
+!notebooks/models/
+!notebooks/models/custom_cnn.keras
 notebooks/.hf_cache/
 notebooks/doclaynet_extracted/
 notebooks/german_docs/

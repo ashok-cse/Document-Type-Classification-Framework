@@ -1,7 +1,7 @@
 # DTCF — German Document Type Classification Framework
 
-A CNN-based image-classification project that distinguishes **six functional types
-of German scanned documents** using the German subset of the **DocLayNet** dataset.
+A CNN-based image-classification project that distinguishes **six functional
+document types** using the DocLayNet-base page-image dataset.
 
 **Course:** Pattern Recognition — Phase 2 (Proposal + Code)
 **Author:** Ashok Kumar Meena
@@ -10,7 +10,7 @@ of German scanned documents** using the German subset of the **DocLayNet** datas
 
 ## Problem
 
-Given a scanned page of a German document, predict its functional type:
+Given a scanned document page, predict its functional type:
 
 `financial_reports` · `scientific_articles` · `laws_and_regulations` · `government_tenders` · `manuals` · `patents`
 
@@ -18,12 +18,28 @@ Only the **visual layout** is used — no OCR text features.
 
 ## Approach
 
-- **Dataset:** [DocLayNet (large)](https://huggingface.co/datasets/pierreguillou/DocLayNet-large), filtered for German pages (~2,000) via collection / filename heuristics with a `langdetect` fallback.
+- **Dataset:** [DocLayNet-base](https://huggingface.co/datasets/pierreguillou/DocLayNet-base), six document categories, **8,057 page images** persisted locally under `notebooks/german_docs/`.
 - **Custom CNN baseline:** 4 conv blocks, ~1M parameters, trained from scratch.
 - **Transfer learning:** ResNet50 (ImageNet pretrained) — two-stage training (head only → fine-tune `conv5_*`).
 - **Evaluation:** macro-F1, accuracy, confusion matrices, ROC + per-class AUC, Grad-CAM, robustness under simulated phone-camera degradations.
 
 Full details are in [`proposal.md`](proposal.md).
+
+## Dataset
+
+The current local dataset contains **8,057 document images** across six classes:
+
+| Class | Images |
+|---|---:|
+| `financial_reports` | 2,627 |
+| `manuals` | 1,679 |
+| `scientific_articles` | 1,396 |
+| `laws_and_regulations` | 1,287 |
+| `patents` | 647 |
+| `government_tenders` | 421 |
+
+The notebook uses a stratified **70 / 15 / 15** train/validation/test split over
+these images.
 
 ## Repository layout
 
@@ -43,8 +59,8 @@ dtcf/
 │   ├── inference.py                       ← model load + preprocessing + predict
 │   ├── templates/index.html               ← upload UI
 │   └── requirements.txt                   ← inference-only Python dependencies
-├── figures/                               ← generated figures (produced at runtime)
-├── data/                                  ← persisted German subset (produced at runtime)
+├── figures/                               ← actual figures generated from saved models
+├── data/                                  ← optional runtime data directory
 └── docs/
     └── deploy_easypanel.md                ← step-by-step Easypanel deployment guide
 ```
@@ -54,13 +70,13 @@ dtcf/
 1. Create a new Kaggle Notebook with **GPU T4 x1** runtime and **Internet on**.
 2. Upload `notebooks/german_doc_classification.ipynb` (or paste its cells into a new notebook).
 3. **Run all cells.** The notebook will:
-   - install `datasets` and `langdetect`,
-   - stream DocLayNet from HuggingFace,
-   - persist only the German subset (~2k pages) to `/kaggle/working/german_docs/`,
+   - download `dataset_base.zip` from HuggingFace,
+   - extract and persist the six-class image dataset to `/kaggle/working/german_docs/`,
    - train both models,
    - write all figures and metrics CSVs to `/kaggle/working/figures/`.
 
-Typical end-to-end run time on a T4 GPU: **~45–75 minutes**, dominated by streaming and ResNet50 fine-tuning.
+Typical end-to-end run time on a T4 GPU: **~45–75 minutes**, dominated by dataset
+download/extraction and ResNet50 fine-tuning.
 
 When complete, download the `figures/` and `models/` directories from
 `/kaggle/working/` as the run artefacts to attach to the Phase 2 submission.
@@ -87,6 +103,21 @@ builder, regenerate the `.ipynb` with:
 cd notebooks && python build_notebook.py
 ```
 
+## Regenerating actual figures
+
+The committed figures are generated from the local 8,057-image dataset and saved
+models:
+
+```bash
+MPLCONFIGDIR=/private/tmp/dtcf-mpl .venv311/bin/python scripts/evaluate_actual_figures.py
+```
+
+This writes actual test-set artifacts to `figures/`, including confusion
+matrices, ROC curves, model comparison, Grad-CAM overlays, and robustness
+results. The old synthetic training-curve placeholders are kept separately under
+`figures/placeholders/`; real F3/F4 training curves require rerunning training
+because the original Keras history objects are not saved in the model files.
+
 ## Dataset license and citation
 
 DocLayNet is released under the **CDLA-Permissive-1.0** license.
@@ -95,14 +126,34 @@ DocLayNet is released under the **CDLA-Permissive-1.0** license.
 > DocLayNet: A Large Human-Annotated Dataset for Document-Layout Analysis.
 > *KDD 2022.* arXiv:2206.01062.
 
-The German subset used here is derived from DocLayNet under the same license. No
+The image dataset used here is derived from DocLayNet under the same license. No
 DocLayNet image data is committed to this repository; the notebook reproduces the
-subset by streaming from HuggingFace.
+local dataset by downloading and extracting DocLayNet-base from HuggingFace.
 
 ## Results
 
-Final numbers will be populated after the Phase 2 run; see `figures/t1_model_comparison.csv`
-and `figures/f8_robustness.csv` after the notebook completes.
+The root `figures/` directory now contains actual figures generated from the
+local dataset and saved models. The evaluation uses the stratified test split of
+**1,209 images** from the full **8,057-image** dataset.
+
+| Model | Accuracy | Macro-F1 | Macro-AUC |
+|---|---:|---:|---:|
+| Custom CNN | 0.326 | 0.082 | 0.479 |
+| ResNet50 | 0.761 | 0.724 | 0.956 |
+
+Actual generated artifacts:
+
+- `figures/f1_class_distribution.png`
+- `figures/f2_sample_per_class.png`
+- `figures/f5_custom_cnn_confusion.png`
+- `figures/f6_custom_cnn_roc.png`
+- `figures/f7_resnet50_confusion.png`
+- `figures/f8_resnet50_roc.png`
+- `figures/f9_model_comparison.png`
+- `figures/f10_gradcam.png`
+- `figures/f11_robustness.png`
+- `figures/t1_model_comparison.csv`
+- `figures/f11_robustness.csv`
 
 ## Deploying the inference service
 

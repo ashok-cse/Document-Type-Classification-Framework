@@ -22,62 +22,56 @@ This project applies the pattern-recognition concepts of supervised learning, co
 
 Given a single-page scanned German document image **x**, predict its **document type** **y ∈ {financial_reports, scientific_articles, laws_and_regulations, government_tenders, manuals, patents}**.
 
-The classifier is constrained to use only the **visual features** of the page image — no OCR text features are used. The challenge is therefore to learn the *layout signatures* (heading styles, column structures, figure placement, whitespace patterns, table density) that distinguish these document categories in a German-language corpus.
+The classifier is constrained to use only the **visual features** of the page image — no OCR text features are used. The challenge is therefore to learn the *layout signatures* (heading styles, column structures, figure placement, whitespace patterns, table density) that distinguish these document categories.
 
 ## 4. Selected Dataset
 
-**Name:** DocLayNet (large variant, German subset)
+**Name:** DocLayNet-base six-class page-image dataset
 **Source:** IBM Research, released under CDLA-Permissive-1.0
-**HuggingFace link:** <https://huggingface.co/datasets/pierreguillou/DocLayNet-large>
+**HuggingFace link:** <https://huggingface.co/datasets/pierreguillou/DocLayNet-base>
 **Original paper:** Pfitzmann et al., *DocLayNet: A Large Human-Annotated Dataset for Document-Layout Analysis*, KDD 2022. arXiv:2206.01062.
 
 ### 4.1 Why DocLayNet
 
-DocLayNet is the only large-scale, openly licensed document image dataset that (a) provides high-quality scanned page images at 1025×1025 resolution, (b) includes document-source labels (`doc_category`) covering six functional categories, and (c) explicitly contains German-language documents drawn from real EU tender portals, German legal sources, and multinational scientific/financial publishers.
+DocLayNet is a large-scale, openly licensed document image dataset that (a) provides high-quality scanned page images at 1025×1025 resolution, (b) includes document-source labels (`doc_category`) covering six functional categories, and (c) contains real-world documents from financial reports, scientific publications, legal sources, tenders, manuals, and patents.
 
 ### 4.2 Dataset Description
 
 | Property                  | Value                                                                                                     |
 | ------------------------- | --------------------------------------------------------------------------------------------------------- |
-| Total pages (full corpus) | 80,577 (train 69,103 / val 6,480 / test 4,994)                                                            |
-| German-language pages     | ≈ 2,014 (2.5 % of the full corpus)                                                                        |
-| Image resolution          | 1025 × 1025 px (standardised, COCO-style)                                                                 |
+| Local dataset size        | 8,057 page images                                                                                         |
+| Image resolution          | 1025 × 1025 px source pages, resized to 224 × 224 for model input                                          |
 | Image type                | RGB rasterised PDF pages of real-world scanned/born-digital documents                                     |
 | Number of classes         | 6 functional document types                                                                               |
 | Class labels              | `financial_reports`, `scientific_articles`, `laws_and_regulations`, `government_tenders`, `manuals`, `patents` |
+| Split                     | Stratified 70 / 15 / 15 train/validation/test split                                                       |
 | License                   | CDLA-Permissive-1.0 (research and educational use)                                                        |
 
-### 4.3 German Subset Extraction
+### 4.3 Class Distribution
 
-DocLayNet does not expose an explicit `language` field. German pages will be extracted using two heuristics applied to the metadata:
+The local extracted dataset contains **8,057 pages**. The class distribution is:
 
-1. **Collection-based filter** — documents from EU Tenders (TED) collections and German legal sources have collection identifiers that resolve to German content.
-2. **Filename / publisher heuristic** — `original_filename` patterns from German-publisher annual reports (`*_de_*`, German-stem PDFs) and German-publisher manuals.
-3. **Fallback language detection on extracted text** — for ambiguous documents, the `texts` field is concatenated and classified with `langdetect`, retaining only those with `lang == 'de'`.
-
-The combined German subset is expected to contain **≈ 2,000 pages**. The expected class distribution (before stratified splitting) is approximately:
-
-| Class                  | Estimated German pages |
-| ---------------------- | ---------------------- |
-| `government_tenders`   | ≈ 800 (EU TED publishes heavily in DE) |
-| `laws_and_regulations` | ≈ 350                  |
-| `financial_reports`    | ≈ 350                  |
-| `manuals`              | ≈ 250                  |
-| `scientific_articles`  | ≈ 150                  |
-| `patents`              | ≈ 100                  |
+| Class                  | Pages |
+| ---------------------- | ----: |
+| `financial_reports`    | 2,627 |
+| `manuals`              | 1,679 |
+| `scientific_articles`  | 1,396 |
+| `laws_and_regulations` | 1,287 |
+| `patents`              |   647 |
+| `government_tenders`   |   421 |
 
 The distribution is **imbalanced**; mitigation will use class-weighted loss and strong augmentation for minority classes.
 
 ### 4.4 Limitations
 
-- The German subset is small (~2k) relative to the multilingual full corpus (~80k). Aggressive data augmentation and transfer learning are required.
+- The local six-class dataset contains 8,057 images and remains imbalanced. Class weighting, augmentation, and transfer learning are required.
 - Handwritten German documents and real phone-camera captures are **not available** in any public German document-type-classification dataset; this is acknowledged as a limitation. Robustness to phone-camera-like conditions is evaluated using *synthesised* augmentations (perspective warp, brightness shifts, JPEG compression, motion blur). Real handwritten and phone-camera evaluation is left as future work.
 
 ## 5. Research Questions
 
-**RQ1.** Can a CNN classifier trained only on the visual layout of German scanned pages distinguish the six functional document categories of DocLayNet with macro-F1 ≥ 0.80?
+**RQ1.** Can a CNN classifier trained only on visual page layout distinguish the six functional document categories of DocLayNet with strong macro-F1?
 
-**RQ2.** How large is the gap between a custom-built CNN (trained from scratch on the small German subset) and a ResNet50 transfer-learning model (ImageNet-pretrained, fine-tuned)? Does pretraining on natural images transfer usefully to document layout features?
+**RQ2.** How large is the gap between a custom-built CNN trained from scratch and a ResNet50 transfer-learning model (ImageNet-pretrained, fine-tuned)? Does pretraining on natural images transfer usefully to document layout features?
 
 **RQ3.** How robust is the best model to phone-camera-style degradations (perspective warp, JPEG compression, blur, brightness shift) that simulate the visual gap between flatbed scans and mobile-phone captures?
 
@@ -152,7 +146,7 @@ Input (224×224×3)
 
 | # | Figure / Table                                                              | Purpose                                          |
 | - | --------------------------------------------------------------------------- | ------------------------------------------------ |
-| F1 | Class-distribution bar chart of the German subset                          | Show dataset imbalance                           |
+| F1 | Class-distribution bar chart of the local dataset                          | Show dataset imbalance                           |
 | F2 | Grid of sample images (one per class)                                      | Qualitative description of the data              |
 | F3 | Training/validation accuracy and loss curves — custom CNN                  | Convergence diagnosis                            |
 | F4 | Training/validation accuracy and loss curves — ResNet50                    | Convergence diagnosis                            |
@@ -167,9 +161,8 @@ Input (224×224×3)
 
 | Risk                                                                                        | Mitigation                                                                                                                   |
 | ------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| ~2k images may be insufficient for a custom CNN from scratch                                | Heavy augmentation, class weighting, early stopping, and rely on the ResNet50 transfer model as the primary reported result |
-| HuggingFace `DocLayNet-large` is 37.6 GB — exceeds Kaggle disk quota if downloaded in full | Stream the dataset, filter for German on the fly, persist only the German subset to local Kaggle storage                    |
-| German-language filter may be noisy                                                         | Cross-check with `langdetect` on extracted text; report retained-page counts honestly                                        |
+| The 8,057-image dataset is imbalanced and challenging for a custom CNN from scratch          | Heavy augmentation, class weighting, early stopping, and rely on the ResNet50 transfer model as the primary reported result |
+| HuggingFace `DocLayNet-large` is 37.6 GB — exceeds Kaggle disk quota if downloaded in full | Use DocLayNet-base via `dataset_base.zip`, then persist only the extracted six-class page-image dataset                     |
 | Class imbalance harms minority classes (`patents`, `scientific_articles`)                    | Class-weighted loss; oversample minority classes via augmentation                                                            |
 
 ## 10. Reproducibility

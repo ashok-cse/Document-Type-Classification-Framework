@@ -132,7 +132,7 @@ doc.add_paragraph(
     "The most recent advancements include applying transfer learning "
     "(ResNet, EfficientNet, ViT) to document images, which gives better "
     "results with much less training data. This project applies these "
-    "concepts specifically to the German subset of DocLayNet to build and "
+    "concepts specifically to the six-class DocLayNet-base dataset to build and "
     "rigorously evaluate a CNN-based classifier for German scanned documents."
 )
 
@@ -246,7 +246,7 @@ rqs = [
     "How accurately can CNN-based models classify German scanned documents "
     "into the six DocLayNet categories using only visual layout features?",
     "Which model family — a custom CNN trained from scratch on the small "
-    "German subset, or a ResNet50 fine-tuned from ImageNet — gives the best "
+    "DocLayNet-base dataset, or a ResNet50 fine-tuned from ImageNet — gives the best "
     "balance between predictive performance and computational efficiency?",
     "How do preprocessing, data augmentation, and class-imbalance handling "
     "influence overall accuracy and per-class robustness?",
@@ -339,7 +339,7 @@ doc.add_paragraph(
     "block (conv5_*) is unfrozen and fine-tuned at a much smaller learning "
     "rate (1e-5) so the pre-trained features are refined without being "
     "destroyed. This two-stage strategy is well-suited to a small target "
-    "dataset like our German subset and reduces the risk of catastrophic "
+    "dataset like DocLayNet-base and reduces the risk of catastrophic "
     "forgetting."
 )
 
@@ -365,53 +365,43 @@ doc.add_paragraph(
 )
 
 # ---------------------------------------------------------------------------
-# Expected Results
+# Results
 # ---------------------------------------------------------------------------
 
-add_heading("Expected Results", level=1)
+add_heading("Results", level=1)
 doc.add_paragraph(
-    "Both models are trained on the German subset of DocLayNet (≈ 2,000 "
-    "pages after filtering, split 70/15/15) with class-weighted "
-    "cross-entropy and the augmentations described above. Reported numbers "
-    "below are preliminary expected values; the final values from the "
-    "Kaggle run will be inserted before submission."
+    "Both models are evaluated on the local DocLayNet-base page-image dataset "
+    "(8,057 images, split 70/15/15). The reported values below are generated "
+    "from the saved models on the stratified test split of 1,209 images."
 )
 doc.add_paragraph(
-    "The Custom CNN is expected to give a training accuracy in the range "
-    "0.78 – 0.85, validation accuracy in the range 0.70 – 0.78, and a "
-    "test macro-F1 in the range 0.65 – 0.75. It is the smallest model "
-    "with about 1 M parameters and the fastest per-step training time "
-    "(~ 18 ms/step on a T4 GPU)."
+    "The Custom CNN is the smallest model (423,526 parameters), but the saved "
+    "model performs poorly on the test set: accuracy 0.326, macro-F1 0.082, "
+    "and macro-AUC 0.479. Its confusion matrix shows collapse toward the "
+    "financial_reports class."
 )
 doc.add_paragraph(
-    "The ResNet50 transfer-learning model is expected to give a training "
-    "accuracy in the range 0.92 – 0.97, validation accuracy in the range "
-    "0.85 – 0.92, and a test macro-F1 in the range 0.82 – 0.90 after the "
-    "two-stage training. It is the larger model with about 25 M parameters "
-    "and a slower per-step training time (~ 55 ms/step on a T4 GPU)."
+    "The ResNet50 transfer-learning model is substantially stronger: accuracy "
+    "0.761, macro-F1 0.724, and macro-AUC 0.956 on the same test split. It has "
+    "24,113,798 parameters and is the primary model for inference."
 )
 doc.add_paragraph(
-    "Under the phone-camera-style robustness evaluation, a macro-F1 drop "
-    "of 5 – 12 percentage points is expected for both models, with the "
-    "ResNet50 model expected to degrade more gracefully than the custom "
-    "CNN. Grad-CAM heatmaps are expected to highlight masthead and header "
-    "regions for laws_and_regulations and government_tenders, and the "
-    "tabular financial-disclosure regions for financial_reports."
+    "Under the phone-camera-style robustness evaluation, ResNet50 macro-F1 "
+    "drops from 0.724 to 0.606. The Custom CNN remains at 0.082 macro-F1 "
+    "because its clean-set predictions are already degenerate."
 )
 
 # Figures — embed each PNG followed by its centred caption.
 add_heading("Figures", level=1)
 doc.add_paragraph(
-    "Figure values below are preliminary placeholders generated to illustrate "
-    "the expected output of the pipeline. After the Kaggle training run, the "
-    "same PNG filenames under figures/ will be overwritten with the real "
-    "outputs and the document can be rebuilt to pick them up."
+    "The figures below are actual artifacts generated from the local dataset "
+    "and saved models by scripts/evaluate_actual_figures.py."
 )
 
 FIG_DIR = Path(__file__).resolve().parent.parent / "figures"
 figure_specs = [
-    ("f1_class_distribution.png", "Fig 1. German subset class distribution."),
-    ("f2_sample_per_class.png", "Fig 2. Sample German page per class (placeholder)."),
+    ("f1_class_distribution.png", "Fig 1. DocLayNet-base class distribution."),
+    ("f2_sample_per_class.png", "Fig 2. Sample page per class."),
     ("f3_custom_cnn_curves.png",
      "Fig 3. Custom CNN training and validation accuracy and loss curves."),
     ("f4_resnet50_curves.png",
@@ -431,8 +421,7 @@ figure_specs = [
      "Fig 9. Model comparison: accuracy, macro-F1, and macro-AUC for "
      "Custom CNN vs. ResNet50."),
     ("f10_gradcam.png",
-     "Fig 10. Grad-CAM overlays for ResNet50, one example page per class "
-     "(placeholder)."),
+     "Fig 10. Grad-CAM overlays for ResNet50, one example page per class."),
     ("f11_robustness.png",
      "Fig 11. Robustness comparison: clean macro-F1 vs. phone-camera-"
      "simulated macro-F1."),

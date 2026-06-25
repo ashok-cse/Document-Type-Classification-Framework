@@ -251,7 +251,7 @@ print(counts)
 
 fig, ax = plt.subplots(figsize=(8, 4))
 sns.barplot(x=counts.index, y=counts.values, ax=ax, palette='viridis')
-ax.set_title('German subset of DocLayNet — class distribution')
+ax.set_title('DocLayNet-base — class distribution')
 ax.set_ylabel('Number of pages'); ax.set_xlabel('')
 plt.xticks(rotation=30, ha='right'); plt.tight_layout()
 plt.savefig(FIG_DIR / 'f1_class_distribution.png', dpi=150, bbox_inches='tight')
@@ -836,8 +836,8 @@ md(
 
 This notebook:
 
-1. Extracted a German-language subset (~2k pages) from DocLayNet using a layered
-   metadata + language-detection filter.
+1. Prepared the six-class DocLayNet-base page-image dataset (8,057 images) and
+   used a stratified 70/15/15 train/validation/test split.
 2. Trained a custom 4-block CNN baseline and a two-stage ResNet50 transfer-learning model.
 3. Evaluated both with confusion matrices, classification reports, ROC curves, and
    Grad-CAM visualisations.
