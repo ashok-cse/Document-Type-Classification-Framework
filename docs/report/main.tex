@@ -724,7 +724,10 @@ custom CNN shows no change.
 At 24.1\,M parameters, ResNet50 is efficient enough for CPU deployment: it is
 converted to TensorFlow Lite and served with a lightweight runtime in a
 512\,MB-class container, with inference offloaded to a worker thread so the
-service stays responsive.
+service stays responsive. On the full-TensorFlow build the service additionally
+returns a live Grad-CAM overlay and an entropy-based uncertainty estimate with
+each prediction, surfacing the explainability analysis to end users at inference
+time.
 
 \begin{figure}[!ht]
 \centering

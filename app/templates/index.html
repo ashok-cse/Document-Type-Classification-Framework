@@ -94,7 +94,13 @@
     .result-head .cls { font-size: 22px; font-weight: 700; margin-top: 2px; }
     .result-head .conf .num { font-size: 30px; font-weight: 800; line-height: 1; text-align: right; }
     .result-head .conf .cap { font-size: 11px; opacity: .85; text-align: right; }
-    .bars-title { font-size: 13px; font-weight: 600; color: var(--muted); margin: 0 0 10px; }
+    .bars-title { font-size: 13px; font-weight: 600; color: var(--muted); margin: 18px 0 10px; }
+    .reco { margin-top: 16px; background: var(--brand-soft); border: 1px solid #bbf7d0; border-radius: 12px; padding: 13px 16px; font-size: 14px; color: var(--ink); line-height: 1.5; }
+    .reco-h { font-weight: 700; color: var(--brand-dark); margin-bottom: 3px; }
+    .reco-h span { font-weight: 500; color: var(--muted); font-size: 12px; }
+    .gradcam { margin-top: 8px; }
+    .gradcam img { width: 100%; max-width: 360px; display: block; margin: 0 auto; border-radius: 10px; border: 1px solid var(--line); }
+    .gradcam .gc-note { font-size: 12px; color: var(--muted); text-align: center; margin: 8px 0 0; }
     .bar-row { display: grid; grid-template-columns: 160px 1fr 52px; align-items: center; gap: 12px; margin: 9px 0; }
     .bar-row .name { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .bar-row.top .name { font-weight: 700; }
@@ -203,6 +209,12 @@
       </div>
       <p class="bars-title">All categories</p>
       <div id="bars"></div>
+      <div class="reco" id="reco" style="display:none"></div>
+      <div class="gradcam" id="gradcamCard" style="display:none">
+        <p class="bars-title">Grad-CAM explanation</p>
+        <img id="gradcamImg" alt="Grad-CAM heatmap overlay" />
+        <p class="gc-note">Warm regions are the page areas most responsible for the predicted type — confirming the model reads layout, not OCR text.</p>
+      </div>
     </div>
 
     <!-- How it works -->
@@ -343,6 +355,19 @@
           <div class="track"><div class="fill" data-w="${(p*100).toFixed(1)}"></div></div>
           <div class="pct">${(p*100).toFixed(1)}%</div>
         </div>`).join('');
+      // Uncertainty + recommendation (mirrors a reliability-aware result panel)
+      const reco = document.getElementById('reco');
+      if (data.recommendation) {
+        const unc = (data.uncertainty != null) ? ` · uncertainty ${(data.uncertainty*100).toFixed(0)}%` : '';
+        reco.innerHTML = `<div class="reco-h">Recommendation <span>(${(data.confidence*100).toFixed(0)}% confidence${unc})</span></div>${data.recommendation}`;
+        reco.style.display = 'block';
+      } else { reco.style.display = 'none'; }
+
+      // Grad-CAM explanation (present only when the Keras backend served it)
+      const gcCard = document.getElementById('gradcamCard'), gcImg = document.getElementById('gradcamImg');
+      if (data.gradcam) { gcImg.src = data.gradcam; gcCard.style.display = 'block'; }
+      else { gcCard.style.display = 'none'; }
+
       resultCard.style.display = 'block';
       requestAnimationFrame(() => { bars.querySelectorAll('.fill').forEach((el) => { el.style.width = el.dataset.w + '%'; }); });
       resultCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });

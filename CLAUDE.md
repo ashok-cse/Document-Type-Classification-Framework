@@ -95,7 +95,7 @@ There is no test suite, linter, or build step configured.
 
 **ResNet50 training is two-stage:** train the head with the base frozen, then unfreeze and fine-tune `conv5_*`. This is the project's chosen transfer-learning recipe (per the course tooling preference: TF/Keras + ResNet50 on Kaggle).
 
-**Service endpoints:** `GET /` (upload UI), `POST /predict` (multipart image → `{predicted_class, confidence, top_k, all_probabilities}`), `GET /health`, `GET /classes`.
+**Service endpoints:** `GET /` (upload UI), `POST /predict` (multipart image → `{predicted_class, confidence, uncertainty, recommendation, top_k, all_probabilities, gradcam?}`; `gradcam` is a base64 PNG overlay returned only on the Keras backend — TFLite/lite build omits it since Grad-CAM needs gradients), `GET /health`, `GET /classes`.
 
 ## Conventions
 

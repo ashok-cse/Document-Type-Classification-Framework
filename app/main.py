@@ -89,4 +89,14 @@ async def predict(file: UploadFile = File(...)) -> JSONResponse:
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Inference failure: {exc}")
 
+    # Grad-CAM explanation (best-effort; available only on the Keras backend,
+    # since it needs gradients — the TFLite free-tier build returns None).
+    if inference.gradcam_available():
+        try:
+            overlay = await run_in_threadpool(inference.gradcam_png, data)
+            if overlay:
+                result["gradcam"] = overlay
+        except Exception as exc:  # never fail the prediction over an explanation
+            print(f"[gradcam] skipped: {exc}")
+
     return JSONResponse(result)
