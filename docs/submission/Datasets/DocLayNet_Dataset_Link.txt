@@ -1,0 +1,6 @@
+Dataset: DocLayNet-base (Parquet variant), IBM Research, CDLA-Permissive-1.0.
+https://huggingface.co/datasets/pierreguillou/DocLayNet-base
+
+The dataset (images) is large and is not stored here. The notebook downloads
+dataset_base.zip via huggingface_hub, extracts it, and persists 224x224 JPEGs.
+A strict langdetect German-language filter selects the German subset.

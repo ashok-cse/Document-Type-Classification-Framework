@@ -1,0 +1,8 @@
+GitHub repository (all code, notebook, app, scripts):
+https://github.com/ashok-cse/Document-Type-Classification-Framework
+
+Kaggle notebook (training + evaluation):
+https://www.kaggle.com/code/ashokkrcse/german-document-type-classification-with-cnns
+
+Live demo (inference web service):
+https://document-type-classification-framework.onrender.com
