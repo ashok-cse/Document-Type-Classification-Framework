@@ -107,6 +107,9 @@
     .tile .emoji { font-size: 22px; }
     .tile h3 { margin: 10px 0 4px; font-size: 15px; font-weight: 650; }
     .tile p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.5; }
+    a.tile.src { text-decoration: none; color: inherit; display: block; transition: border-color .15s, box-shadow .15s; }
+    a.tile.src:hover { border-color: var(--brand); box-shadow: var(--shadow); }
+    a.tile.src h3 { color: var(--brand-dark); }
 
     .step { position: relative; }
     .step .n { width: 28px; height: 28px; border-radius: 8px; background: var(--brand-soft); color: var(--brand-dark); display: grid; place-items: center; font-weight: 700; font-size: 14px; }
@@ -204,6 +207,20 @@
         <div class="tile"><div class="emoji">🏛️</div><h3>Government tenders</h3><p>Public procurement notices and tender documents.</p></div>
         <div class="tile"><div class="emoji">📘</div><h3>Manuals</h3><p>Technical guides, handbooks, and instruction manuals.</p></div>
         <div class="tile"><div class="emoji">💡</div><h3>Patents</h3><p>Patent filings and intellectual-property documents.</p></div>
+      </div>
+    </section>
+
+    <!-- Examples -->
+    <section class="section">
+      <h2>Try it with a real German document</h2>
+      <p class="sub">Grab a page from one of these public German sources, save it as an image, and upload it above. Tip: open a PDF and screenshot or export a <strong>single page</strong> as JPG/PNG — the model reads page images, not PDFs.</p>
+      <div class="grid grid-3">
+        <a class="tile src" href="https://www.bundesanzeiger.de/" target="_blank" rel="noopener"><div class="emoji">📊</div><h3>Financial reports ↗</h3><p>Bundesanzeiger — German company annual statements (Jahresabschlüsse).</p></a>
+        <a class="tile src" href="https://www.base-search.net/" target="_blank" rel="noopener"><div class="emoji">🔬</div><h3>Scientific articles ↗</h3><p>BASE — German-language open-access research papers.</p></a>
+        <a class="tile src" href="https://www.gesetze-im-internet.de/" target="_blank" rel="noopener"><div class="emoji">⚖️</div><h3>Laws &amp; regulations ↗</h3><p>Gesetze im Internet — German federal legislation.</p></a>
+        <a class="tile src" href="https://www.evergabe-online.de/" target="_blank" rel="noopener"><div class="emoji">🏛️</div><h3>Government tenders ↗</h3><p>e-Vergabe &amp; service.bund.de — German public procurement notices.</p></a>
+        <a class="tile src" href="https://www.manualslib.de/" target="_blank" rel="noopener"><div class="emoji">📘</div><h3>Manuals ↗</h3><p>ManualsLib (DE) — German Bedienungsanleitungen &amp; Handbücher.</p></a>
+        <a class="tile src" href="https://depatisnet.dpma.de/" target="_blank" rel="noopener"><div class="emoji">💡</div><h3>Patents ↗</h3><p>DEPATISnet (DPMA) — German patent publications since 1877.</p></a>
       </div>
     </section>
 
