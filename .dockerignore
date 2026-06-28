@@ -11,7 +11,10 @@ venv
 notebooks/
 data/
 figures/
-models/
+# The inference model IS baked into the image (see Dockerfile). Keep the
+# resnet50.keras file in the build context; exclude everything else under models/.
+models/*
+!models/resnet50.keras
 docs/
 proposal.md
 README.md

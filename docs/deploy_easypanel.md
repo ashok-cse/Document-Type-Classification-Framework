@@ -1,7 +1,13 @@
 # Deploying DTCF on Easypanel
 
 This guide walks through the end-to-end deployment of the DTCF inference service
-on an Easypanel VPS, including model hosting.
+on an Easypanel VPS.
+
+> **The trained model is baked into the Docker image** (`models/resnet50.keras`,
+> committed in the repo). The default deployment is self-contained — no
+> HuggingFace upload and no model env vars are required. Sections 1–2 and the HF
+> env vars in §5 are an **optional** alternative for serving a model from
+> HuggingFace Hub instead (e.g. to swap models without rebuilding the image).
 
 ---
 
@@ -14,9 +20,10 @@ on an Easypanel VPS, including model hosting.
 
 ---
 
-## 1. Train the model on Kaggle
+## 1. Train the model on Kaggle *(optional — only to retrain)*
 
-The inference service has nothing to serve until you've trained a model.
+The repo ships with a trained `models/resnet50.keras` already baked into the
+image, so you can skip to §3. Follow this section only if you want to retrain.
 
 1. Upload `notebooks/german_doc_classification.ipynb` to a new Kaggle Notebook with GPU T4 runtime and Internet enabled.
 2. Run all cells. Expect 45–75 minutes.
@@ -25,10 +32,11 @@ The inference service has nothing to serve until you've trained a model.
 
 ---
 
-## 2. Upload the model to HuggingFace Hub
+## 2. Upload the model to HuggingFace Hub *(optional)*
 
-We do **not** bake the model into the Docker image — it would bloat the image
-to ~1.5 GB and force a full rebuild every time you retrain.
+> Skip this for the default self-contained deployment. Do it only if you want to
+> serve a model from HF Hub instead of the baked-in one (set the HF env vars in
+> §5 **and** an empty `LOCAL_MODEL_PATH` to disable the baked model).
 
 1. Create a new model repo at <https://huggingface.co/new>. Name it something like `ashokmarmath/dtcf-resnet50`. Public is fine; private requires an `HF_TOKEN` env var on Easypanel.
 2. From your laptop:
@@ -73,18 +81,26 @@ The repo's `Dockerfile` is at the root — Easypanel will detect and use it.
 
 ## 5. Configure environment variables
 
-In **App → Environment** add:
+**For the default (baked-in model) deployment, you need _no_ env vars** — the
+image already sets `LOCAL_MODEL_PATH=/models/resnet50.keras` and `EAGER_LOAD=1`.
+Optionally set `EAGER_LOAD=1` explicitly (it is the default) to pre-warm.
 
-| Variable        | Value                            | Notes                                            |
-| --------------- | -------------------------------- | ------------------------------------------------ |
-| `HF_MODEL_REPO` | `ashokmarmath/dtcf-resnet50`     | The HF repo you created in step 2.               |
-| `HF_MODEL_FILE` | `resnet50.keras`                 | Filename in that repo.                           |
-| `HF_TOKEN`      | (only if the HF repo is private) | A *read* token from huggingface.co/settings/tokens. |
-| `EAGER_LOAD`    | `1`                              | Pre-load the model on container start.           |
+Add the variables below **only** if you chose the HuggingFace path in §2:
+
+| Variable           | Value                            | Notes                                                                 |
+| ------------------ | -------------------------------- | --------------------------------------------------------------------- |
+| `LOCAL_MODEL_PATH` | *(empty string)*                 | Required to **disable** the baked-in model so HF is used.             |
+| `HF_MODEL_REPO`    | `ashokmarmath/dtcf-resnet50`     | The HF repo you created in step 2.                                    |
+| `HF_MODEL_FILE`    | `resnet50.keras`                 | Filename in that repo.                                                 |
+| `HF_TOKEN`         | (only if the HF repo is private) | A *read* token from huggingface.co/settings/tokens.                   |
+| `EAGER_LOAD`       | `1`                              | Pre-load the model on container start (already the image default).   |
 
 ---
 
-## 6. (Optional but recommended) Persistent volume for the model cache
+## 6. Persistent volume for the model cache *(HF path only)*
+
+> Not needed for the default baked-in model — it's already inside the image.
+> This applies only if you switched to the HuggingFace path in §2.
 
 The model is ~95 MB. Without a persistent volume it re-downloads from
 HuggingFace on every container restart.
@@ -105,6 +121,25 @@ When the container is up:
 - Visit your Easypanel-issued URL → the upload UI.
 - Visit `<url>/health` → should return `{"status":"ok","model_loaded":true,...}`.
 - Visit `<url>/docs` → FastAPI's interactive Swagger UI.
+
+### Validate the deployment with real documents
+
+`scripts/validate_endpoint.py` exercises the live service over HTTP (stdlib only —
+no TensorFlow needed on your laptop):
+
+```bash
+# Liveness + a single page
+python scripts/validate_endpoint.py --url https://<your-url> page.jpg
+
+# Batch accuracy: one sub-folder per class, named exactly as the labels
+#   docs/financial_reports/*.jpg  docs/patents/*.jpg  ...
+python scripts/validate_endpoint.py --url https://<your-url> ./labelled_docs
+```
+
+The batch run prints overall accuracy, per-class recall, and a confusion matrix.
+Note the model classifies **page images** (PNG/JPG) of the six German DocLayNet
+types using layout only — feeding it PDFs, English docs, or other document types
+will produce confidently wrong labels (expected, not a bug).
 
 ---
 
@@ -137,6 +172,6 @@ bump the `HF_MODEL_FILE` env var so rollbacks are trivial.
 | Symptom                                                | Likely cause / fix                                                                                                |
 | ------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------- |
 | Container restarts continuously                        | Out of memory. Bump VPS RAM to 2 GB+, or switch to `tensorflow-lite-runtime` (see future-work in [proposal.md](../proposal.md)). |
-| `/health` shows `"model_loaded": false`                | HF download failed. Check `HF_MODEL_REPO`/`HF_MODEL_FILE`. If private repo, ensure `HF_TOKEN` is set.              |
+| `/health` shows `"model_loaded": false`                | Baked-in model missing/corrupt — rebuild the image (ensure `models/resnet50.keras` is committed and not blocked by `.dockerignore`). On the HF path: check `HF_MODEL_REPO`/`HF_MODEL_FILE` and `HF_TOKEN` for private repos. |
 | First request very slow (~30 s)                        | Model is loading on first call. Set `EAGER_LOAD=1` and a persistent HF cache volume to hide this from users.      |
 | 413 Request Entity Too Large on big TIFF / PDF uploads | Easypanel default Nginx body size. Either resize before upload or raise the body-size limit in the proxy config.  |

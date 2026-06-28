@@ -1,0 +1,29 @@
+# Render Blueprint for the DTCF inference service.
+# Render builds the repo's Dockerfile; the trained model is baked into the image,
+# so no HuggingFace setup or external storage is required.
+#
+# Deploy: push to GitHub, then in Render → "New +" → "Blueprint" and pick this repo.
+# Docs: docs/deploy_render.md
+services:
+  - type: web
+    name: dtcf
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    # ResNet50 + TensorFlow needs >512 MB at load time, so the free/starter
+    # 512 MB plans will OOM. "standard" = 2 GB RAM, 1 CPU — the minimum that
+    # reliably loads and serves the model.
+    plan: standard
+    region: oregon
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      # Pre-load the model on startup so the first request isn't cold.
+      - key: EAGER_LOAD
+        value: "1"
+      # Quieten TensorFlow's C++ logging.
+      - key: TF_CPP_MIN_LOG_LEVEL
+        value: "3"
+      # The model is baked into the image (LOCAL_MODEL_PATH is set in the
+      # Dockerfile). To serve from HuggingFace instead, set LOCAL_MODEL_PATH to
+      # an empty string here and add HF_MODEL_REPO / HF_MODEL_FILE.
