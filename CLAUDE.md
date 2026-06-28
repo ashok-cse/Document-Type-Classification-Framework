@@ -69,7 +69,7 @@ The image is self-contained (model baked in) and deploys as a container. **Two D
 
 Both bake the model in and bind to `$PORT` (Render injects it; ENV default 8000 for local/Easypanel). `app/inference.py` auto-selects the backend by file extension (`.tflite` → LiteRT, else Keras) and uses **pure-NumPy ResNet50 preprocessing** (so the lite path needs no TF). The TFLite model is regenerated with `python scripts/convert_to_tflite.py` (needs full TF; uses a SavedModel-export workaround because direct `from_keras_model` conversion hits a Keras 3 MLIR bug). Slim deps live in `app/requirements-lite.txt`.
 
-Deploy targets: **Render** — `render.yaml` Blueprint + `docs/deploy_render.md` (free tier via the slim image). **Easypanel** — `docs/deploy_easypanel.md`.
+Deploy targets: **Hugging Face Spaces** — `hf_space/` + `docs/deploy_huggingface.md` (free ~16 GB CPU tier, runs the **full** image so **Grad-CAM works**; the Space Dockerfile clones GitHub at build to avoid LFS). **Render** — `render.yaml` Blueprint + `docs/deploy_render.md` (free 512 MB tier via the slim image, no Grad-CAM). **Easypanel** — `docs/deploy_easypanel.md` (full image on a ≥2 GB VPS). Grad-CAM (gradients) needs the full Keras build, so it is available on HF Spaces / Easypanel / the full Docker image, but not on the TFLite lite build.
 
 Serverless platforms (Vercel, Cloudflare Workers/Pages) **cannot** host the backend — even the slim runtime exceeds their function size/runtime limits. They can host a static front-end only.
 
