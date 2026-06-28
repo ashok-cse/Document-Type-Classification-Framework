@@ -237,88 +237,212 @@ Section~\ref{sec:conclusion} concludes.
 
 %==================================================================
 \section{Literature Review}\label{sec:lit}
-% Organise by themes, not paper-by-paper. TODO(student): expand each subsection
-% and grow the matrix to 12-20 closely related peer-reviewed studies.
+% Organised by research themes rather than paper-by-paper.
+% TODO(student): the course template asks for 12--20 closely related studies in
+% the matrix and a reference list of 25--50 entries with >=80% published after
+% 2021. Extend the matrix and prose with additional recent peer-reviewed studies
+% (Google Scholar BibTeX), and rebalance the citation mix toward 2021+.
 
 \subsection{Image-Based Machine Learning in Document Analysis}
-Early document image analysis relied on hand-crafted features and classical
-classifiers, which were sensitive to scan quality and layout variation.
-The shift to deep CNNs substantially improved document image
-classification~\cite{harley2015evaluation,afzal2017cutting}.
-These methods read layout directly from pixels and outperform text-only
-pipelines on noisy scans.
+Document image analysis has progressed from hand-crafted descriptors to
+end-to-end deep representations over the past decade.
+Early systems combined connected-component analysis, projection profiles, and
+texture descriptors with classical classifiers such as support vector machines,
+and were highly sensitive to scan quality, skew, and layout variability.
+The introduction of large annotated benchmarks such as RVL-CDIP enabled a shift
+toward convolutional neural networks for whole-page
+classification~\cite{harley2015evaluation}.
+Subsequent work showed that very deep CNNs with careful training strategies could
+roughly halve the error of earlier models on the same
+benchmark~\cite{afzal2017cutting}.
+A central advantage of image-based models is that they read structural cues ---
+mastheads, column geometry, table density, and whitespace --- directly from
+pixels, without depending on accurate optical character recognition.
+This property is particularly attractive for heterogeneous archives where scan
+quality and fonts vary widely.
+The present study builds on this line of work but targets the German-language
+setting, which has received little dedicated attention.
 
 \subsection{CNN and Transfer-Learning Methods for Document Classification}
-Very deep CNNs with strong training strategies set early benchmarks on
-RVL-CDIP~\cite{afzal2017cutting}, and transfer learning from ImageNet became the
-standard recipe for small document datasets~\cite{he2016deep,weiss2016survey}.
-More recent document-AI models jointly pre-train text and layout
-(LayoutLM, LayoutLMv3, DocFormer) or remove OCR entirely
-(Donut)~\cite{xu2020layoutlm,huang2022layoutlmv3,appalaraju2021docformer,kim2022donut}.
-These are powerful but heavier and text-dependent, motivating a lightweight,
-vision-only baseline for the German setting.
+Transfer learning from ImageNet-pretrained CNNs has become the default recipe for
+document image classification when labelled data are
+limited~\cite{he2016deep,weiss2016survey,zhuang2021comprehensive}.
+Pretrained backbones supply general low-level features that transfer to page
+structure, so only a compact classification head and a partial fine-tune are
+required for a new domain.
+Comprehensive transfer-learning surveys document the effectiveness of
+feature-extraction and fine-tuning regimes across many visual
+tasks~\cite{zhuang2021comprehensive}.
+For documents specifically, deep transfer models consistently outperform
+networks trained from scratch on mid-sized datasets~\cite{afzal2017cutting}.
+However, much of this literature reports only top-line accuracy and rarely
+analyses per-class reliability or explanation quality.
+Most studies also evaluate exclusively on English corpora, leaving open how well
+the recipe transfers to German layouts with distinct typographic conventions.
+This motivates a controlled custom-versus-transfer comparison on a German subset
+with macro-averaged metrics and explainability, as conducted here.
+
+\subsection{Transformer-Based and Self-Supervised Document Models}
+Beyond CNNs, the transformer architecture~\cite{vaswani2017attention} has
+reshaped image recognition through vision
+transformers~\cite{dosovitskiy2021image,liu2021swin}, and self-supervised
+pre-training has been adapted to documents.
+LayoutLM and its successors jointly pre-train text, layout, and image signals to
+reach state-of-the-art document understanding, including page
+classification~\cite{xu2020layoutlm,huang2022layoutlmv3}.
+DocFormer couples a CNN visual stream with a multimodal transformer for
+end-to-end document understanding~\cite{appalaraju2021docformer}, while DiT shows
+that purely visual self-supervised pre-training on document images is highly
+effective~\cite{li2022dit}.
+BEiT-style masked-image pre-training underpins several of these document
+models~\cite{bao2022beit}, and Donut removes OCR entirely with an
+image-to-sequence transformer~\cite{kim2022donut}.
+Cross-modal contrastive approaches such as VLCDoC further improve document
+classification by aligning vision and language
+representations~\cite{bakkali2023vlcdoc}.
+These models are powerful but typically large, data-hungry, and dependent on
+text or OCR tokens, which raises the cost of training and deployment.
+A lightweight, vision-only CNN baseline therefore remains valuable for
+resource-constrained, layout-only German document routing, which is the focus of
+this work.
 
 \subsection{Transfer-Learning Architectures}
-Common backbones include ResNet50~\cite{he2016deep},
-DenseNet121~\cite{huang2017densely}, EfficientNet~\cite{tan2019efficientnet}, and
-MobileNetV2~\cite{sandler2018mobilenetv2}, trading depth, parameter count, and
-efficiency.
-ResNet50 is selected here for its strong accuracy-to-cost ratio and mature
-tooling.
+The choice of backbone trades depth, parameter count, and inference cost.
+Residual networks introduced skip connections that enable very deep training and
+remain a strong default~\cite{he2016deep}, while VGG and Inception established
+earlier deep designs~\cite{simonyan2015very,szegedy2016rethinking}.
+DenseNet improves feature reuse through dense connectivity~\cite{huang2017densely},
+and the EfficientNet family scales depth, width, and resolution jointly for a
+better accuracy-to-cost ratio~\cite{tan2019efficientnet,tan2021efficientnetv2}.
+MobileNetV2 targets mobile and edge deployment with inverted-residual
+blocks~\cite{sandler2018mobilenetv2}, and modernised convolutional designs such
+as ConvNeXt narrow the gap to transformers while retaining CNN
+efficiency~\cite{liu2022convnet}.
+ResNet50 is selected in this study because it offers a strong, well-understood
+accuracy-to-cost balance, mature tooling, and a parameter count compatible with
+free-tier deployment after compression.
 
-\subsection{Preprocessing, Augmentation, and Evaluation}
-Resizing, normalisation, and label-preserving augmentation reduce overfitting on
-small datasets~\cite{shorten2019survey}.
-Orientation-changing flips are avoided because page orientation is meaningful.
-Reliable evaluation combines macro-averaged precision/recall/F1, ROC-AUC, and
-confusion matrices, and studies relying on accuracy alone are easily misled on
-imbalanced data.
+\subsection{Preprocessing, Augmentation, and Class-Imbalance Handling}
+Standard preprocessing for CNN document classifiers includes resizing to a fixed
+input, colour-mode normalisation, and pixel scaling using either $[0,1]$ or
+dataset-specific channel statistics.
+Data augmentation is widely used to reduce overfitting on small datasets, and
+recent surveys catalogue modern geometric, photometric, and learned augmentation
+strategies~\cite{shorten2019survey,mumuni2022data}.
+For documents, label-preserving transformations such as small rotations,
+translations, zooms, and brightness shifts are appropriate, whereas
+orientation-changing flips can destroy class-relevant structure.
+Class imbalance is common in functional document datasets and is typically
+addressed through class weighting, oversampling, targeted augmentation, or focal
+loss.
+This study adopts class-weighted cross-entropy combined with mild geometric and
+photometric augmentation, which is a standard and reproducible choice for
+imbalanced image classification.
+
+\subsection{Model Evaluation and Reliability}
+Reliable evaluation of imbalanced multi-class classifiers requires more than
+overall accuracy, which can be dominated by majority classes.
+Macro-averaged precision, recall, and F1 weight each class equally and better
+reflect minority-class behaviour.
+One-vs-rest ROC analysis with per-class and macro AUC characterises
+threshold-independent separability, and confusion matrices expose specific
+inter-class confusions.
+Studies that report accuracy alone risk overstating performance on skewed
+datasets, a pitfall this work explicitly avoids by reporting macro metrics, ROC
+curves, and confusion matrices together.
+Where feasible, repeated runs and statistical comparison further strengthen
+reliability claims, although these are often omitted in practice.
 
 \subsection{Explainable AI in Image Analysis}
-Grad-CAM is the dominant class-activation method for inspecting CNN
-attention~\cite{selvaraju2017grad}, and SHAP provides complementary
-feature-attribution~\cite{lundberg2017unified}.
-Both have limitations: attractive heatmaps are not proof of correct reasoning and
-can be sensitive to preprocessing.
+Interpretability methods help verify that a classifier relies on meaningful
+evidence rather than dataset shortcuts.
+Grad-CAM produces class-discriminative localisation maps from gradient
+information at a convolutional layer~\cite{selvaraju2017grad}, and Grad-CAM++
+refines localisation for multiple or small objects~\cite{chattopadhay2018grad}.
+SHAP offers a complementary, game-theoretic attribution of a prediction to input
+features or regions~\cite{lundberg2017unified}.
+Broad XAI surveys situate these methods within a taxonomy of explanation
+techniques and emphasise responsible, human-centred
+deployment~\cite{arrieta2020explainable}.
+Crucially, visually plausible heatmaps are not proof of correct reasoning: they
+can be unstable, sensitive to preprocessing, and model-dependent, so explanations
+must be interpreted with domain knowledge.
+This study uses Grad-CAM to confirm layout-region attention and flags the
+addition of SHAP as future work.
+
+\subsection{Robustness, Generalisation, and Deployment}
+Real-world document capture introduces distortions absent from clean flatbed
+scans, including perspective warp, blur, illumination change, and compression.
+Recent work shows that deep document classifiers can degrade substantially under
+realistic distortions, underscoring the need for explicit robustness
+testing~\cite{saifullah2022robust}.
+Deployment considerations such as model size, inference latency, and memory are
+frequently overlooked despite being decisive for practical use on mobile, edge,
+or low-cost cloud hosts.
+Efficient backbones and model compression (for example conversion to a
+lightweight inference runtime) directly address these constraints.
+This study evaluates phone-camera-style robustness and demonstrates a compressed,
+CPU-only public deployment, two aspects rarely combined in prior German document
+work.
 
 \subsection{Comparative Literature Review Matrix}
-Table~\ref{tab:literature_matrix} compares closely related studies across
-datasets, models, balancing, explainability, robustness, validation, and
-efficiency, and contrasts them with the proposed work.
-% TODO(student): expand to 12-20 rows with real, recent (post-2021) references
-% taken from Google Scholar BibTeX, then synthesise the gaps in prose below.
+Table~\ref{tab:literature_matrix} compares closely related document-image studies
+across datasets, models, class balancing, multi-model comparison, explainability,
+robustness, efficiency, and evaluation, and contrasts them with the proposed
+work.
+The comparison is synthesised in prose below rather than restated row by row.
+% TODO(student): extend this matrix to 12--20 rows with additional recent
+% peer-reviewed studies before final submission.
 
 \begin{sidewaystable}[p]
 \centering
 \tiny
 \caption{Comparative literature review matrix summarising datasets, models,
-evaluation, explainability, robustness, and validation strategies in closely
-related document-image and transfer-learning studies, contrasted with the
-proposed German layout-based framework. Symbols: \cmark{} included,
-\xmark{} not included, \pmark{} partial. Abbreviations: TL transfer learning,
-CB class balancing, MC multi-model comparison, GC Grad-CAM, SH SHAP,
-RT robustness testing, EA efficiency analysis.}
+class balancing, multi-model comparison, explainability, robustness, efficiency
+analysis, and evaluation in closely related document-image and document-AI
+studies, contrasted with the proposed German layout-based framework. Symbols:
+\cmark{} included, \xmark{} not included, \pmark{} partial. Abbreviations:
+TL transfer learning, CB class balancing, MC multi-model comparison,
+GC Grad-CAM, SH SHAP, RT robustness testing, EA efficiency analysis.}
 \label{tab:literature_matrix}
-\begin{tabular}{p{2.0cm} p{2.2cm} p{1.8cm} c p{1.3cm} p{2.2cm} c c c c c c c p{2.4cm} p{2.6cm}}
+\begin{tabular}{p{2.0cm} p{2.1cm} p{1.7cm} c p{1.2cm} p{2.1cm} c c c c c c c p{2.2cm} p{2.5cm}}
 \toprule
 \textbf{Study} & \textbf{Problem} & \textbf{Dataset} & \textbf{Cls} & \textbf{Size} & \textbf{Models} & \textbf{TL} & \textbf{CB} & \textbf{MC} & \textbf{GC} & \textbf{SH} & \textbf{RT} & \textbf{EA} & \textbf{Metrics} & \textbf{Principal limitation} \\
 \midrule
 Harley et al.\ \cite{harley2015evaluation}, 2015 & Doc.\ image classification \& retrieval & RVL-CDIP & 16 & 400k & AlexNet-style CNN & \cmark & \xmark & \cmark & \xmark & \xmark & \xmark & \pmark & Accuracy & English-only; no explainability \\
-Afzal et al.\ \cite{afzal2017cutting}, 2017 & Doc.\ image classification & RVL-CDIP/Tobacco & 16/10 & 400k & Deep CNNs (TL) & \cmark & \xmark & \cmark & \xmark & \xmark & \xmark & \pmark & Accuracy & English; no XAI/robustness \\
+Afzal et al.\ \cite{afzal2017cutting}, 2017 & Doc.\ image classification & RVL-CDIP, Tobacco & 16/10 & 400k & Deep CNNs (TL) & \cmark & \xmark & \cmark & \xmark & \xmark & \xmark & \pmark & Accuracy & English; no XAI/robustness \\
 Xu et al.\ \cite{xu2020layoutlm}, 2020 & Document understanding & RVL-CDIP & 16 & 400k & LayoutLM (text+layout) & \cmark & \xmark & \cmark & \xmark & \xmark & \xmark & \xmark & Accuracy/F1 & OCR-dependent; English \\
+Appalaraju et al.\ \cite{appalaraju2021docformer}, 2021 & Document understanding & RVL-CDIP+ & 16 & 400k+ & DocFormer (multimodal) & \cmark & \xmark & \cmark & \xmark & \xmark & \xmark & \xmark & Accuracy/F1 & Heavy; multimodal/OCR \\
 Huang et al.\ \cite{huang2022layoutlmv3}, 2022 & Document AI & RVL-CDIP+ & 16 & 400k+ & LayoutLMv3 & \cmark & \xmark & \cmark & \xmark & \xmark & \xmark & \xmark & Accuracy/F1 & Heavy; text-dependent \\
+Kim et al.\ \cite{kim2022donut}, 2022 & OCR-free doc.\ understanding & RVL-CDIP, others & 16 & 400k & Donut (transformer) & \cmark & \xmark & \cmark & \xmark & \xmark & \xmark & \pmark & Accuracy/F1 & Large; data-hungry \\
+Li et al.\ \cite{li2022dit}, 2022 & Self-supervised doc.\ pretrain & RVL-CDIP, others & 16 & 400k+ & DiT (vision transformer) & \cmark & \xmark & \cmark & \xmark & \xmark & \xmark & \xmark & Accuracy/F1 & Large pretraining cost \\
+Smock et al.\ \cite{smock2022pubtables}, 2022 & Table structure extraction & PubTables-1M & --- & 1M & DETR-based & \cmark & \pmark & \xmark & \xmark & \xmark & \xmark & \pmark & AP/IoU & Task is tables, not page type \\
+Bakkali et al.\ \cite{bakkali2023vlcdoc}, 2023 & Cross-modal doc.\ classification & RVL-CDIP, Tobacco & 16/10 & 400k & VLCDoC (vision-language) & \cmark & \xmark & \cmark & \xmark & \xmark & \xmark & \xmark & Accuracy & English; multimodal \\
+Saifullah et al.\ \cite{saifullah2022robust}, 2022 & Robustness of doc.\ classification & RVL-CDIP & 16 & 400k & CNN/transformer & \cmark & \xmark & \cmark & \xmark & \xmark & \cmark & \pmark & Accuracy & English; no XAI \\
 \textbf{Proposed}, 2026 & \textbf{German doc.\ type classification (layout only)} & \textbf{DocLayNet-base} & \textbf{6} & \textbf{8{,}057} & \textbf{Custom CNN, ResNet50} & \cmark & \cmark & \cmark & \cmark & \xmark & \cmark & \cmark & \textbf{Acc, macro-F1, AUC} & \textbf{Single dataset; SHAP pending} \\
 \bottomrule
 \end{tabular}
 \end{sidewaystable}
 
 \subsection{Synthesis of Literature and Identified Gap}
-Across the reviewed work, ImageNet transfer learning is consistently effective on
-small document datasets, but evaluation often stops at accuracy, explainability
-is rare, and German-language layout is essentially unaddressed.
-The proposed framework responds by combining a custom-vs-transfer comparison with
-macro metrics, Grad-CAM, robustness testing, and deployment, specifically for
-German pages, leading into the methodology.
+Several consistent patterns emerge from the reviewed studies.
+ImageNet transfer learning is reliably effective on mid-sized document datasets,
+and recent multimodal and self-supervised transformers achieve the highest
+reported accuracy on English benchmarks~\cite{xu2020layoutlm,huang2022layoutlmv3,li2022dit,bakkali2023vlcdoc}.
+At the same time, three recurring weaknesses are evident: evaluation frequently
+stops at overall accuracy without per-class or macro analysis; explainability is
+rarely reported, and SHAP almost never accompanies Grad-CAM; and robustness and
+deployment efficiency are seldom evaluated together~\cite{saifullah2022robust}.
+Critically, the German-language setting is essentially unaddressed, despite its
+distinct typographic and layout conventions, and most leading methods depend on
+OCR or text tokens that the present layout-only task deliberately avoids.
+The proposed framework responds to these gaps by combining a controlled
+custom-versus-transfer comparison, macro-averaged metrics with ROC and confusion
+analysis, Grad-CAM explanations, an explicit phone-camera robustness test, and a
+compressed public deployment, all focused on German document pages.
+This positions the study as a reproducible, explainable, and deployment-aware
+baseline for German document-type classification, and motivates the methodology
+presented next.
 
 %==================================================================
 \section{Methodology}\label{sec:method}
