@@ -141,6 +141,7 @@ def plot_confusion(cm: np.ndarray, title: str, save_name: str) -> None:
         ax.tick_params(axis="y", rotation=0)
     plt.tight_layout()
     fig.savefig(FIG_DIR / save_name, dpi=150, bbox_inches="tight")
+    fig.savefig(FIG_DIR / save_name.replace(".png", ".pdf"), bbox_inches="tight")  # vector copy
     plt.close(fig)
 
 
@@ -161,6 +162,7 @@ def plot_roc(y_true: np.ndarray, y_prob: np.ndarray, title: str, save_name: str)
     ax.legend(loc="lower right", fontsize=8)
     plt.tight_layout()
     fig.savefig(FIG_DIR / save_name, dpi=150, bbox_inches="tight")
+    fig.savefig(FIG_DIR / save_name.replace(".png", ".pdf"), bbox_inches="tight")  # vector copy
     plt.close(fig)
     return macro_auc
 
@@ -229,6 +231,7 @@ def plot_model_comparison(metrics: list[dict[str, float | int | str]]) -> None:
     ax.legend()
     plt.tight_layout()
     fig.savefig(FIG_DIR / "f9_model_comparison.png", dpi=150, bbox_inches="tight")
+    fig.savefig(FIG_DIR / "f9_model_comparison.pdf", bbox_inches="tight")  # vector copy
     plt.close(fig)
 
 
@@ -289,6 +292,7 @@ def plot_gradcam(index_df: pd.DataFrame, resnet_model: tf.keras.Model) -> None:
     plt.suptitle("Grad-CAM overlays (ResNet50 actual model)", y=1.02, fontsize=14)
     plt.tight_layout()
     fig.savefig(FIG_DIR / "f10_gradcam.png", dpi=150, bbox_inches="tight")
+    fig.savefig(FIG_DIR / "f10_gradcam.pdf", bbox_inches="tight")  # vector copy
     plt.close(fig)
 
 
@@ -370,6 +374,7 @@ def plot_robustness(
     ax.legend()
     plt.tight_layout()
     fig.savefig(FIG_DIR / "f11_robustness.png", dpi=150, bbox_inches="tight")
+    fig.savefig(FIG_DIR / "f11_robustness.pdf", bbox_inches="tight")  # vector copy
     plt.close(fig)
 
 
@@ -391,6 +396,7 @@ def plot_eda_figures(index_df: pd.DataFrame) -> None:
         )
     plt.tight_layout()
     fig.savefig(FIG_DIR / "f1_class_distribution.png", dpi=150, bbox_inches="tight")
+    fig.savefig(FIG_DIR / "f1_class_distribution.pdf", bbox_inches="tight")  # vector copy
     plt.close(fig)
 
     fig, axes = plt.subplots(2, 3, figsize=(13, 9))
@@ -406,6 +412,7 @@ def plot_eda_figures(index_df: pd.DataFrame) -> None:
     plt.suptitle("Sample document page per class", y=1.02, fontsize=14)
     plt.tight_layout()
     fig.savefig(FIG_DIR / "f2_sample_per_class.png", dpi=150, bbox_inches="tight")
+    fig.savefig(FIG_DIR / "f2_sample_per_class.pdf", bbox_inches="tight")  # vector copy
     plt.close(fig)
 
 

@@ -394,9 +394,8 @@ The comparison is synthesised in prose below rather than restated row by row.
 % TODO(student): extend this matrix to 12--20 rows with additional recent
 % peer-reviewed studies before final submission.
 
-\begin{sidewaystable}[p]
+\begin{table}[!ht]
 \centering
-\tiny
 \caption{Comparative literature review matrix summarising datasets, models,
 class balancing, multi-model comparison, explainability, robustness, efficiency
 analysis, and evaluation in closely related document-image and document-AI
@@ -405,6 +404,8 @@ studies, contrasted with the proposed German layout-based framework. Symbols:
 TL transfer learning, CB class balancing, MC multi-model comparison,
 GC Grad-CAM, SH SHAP, RT robustness testing, EA efficiency analysis.}
 \label{tab:literature_matrix}
+\scriptsize
+\begin{adjustbox}{max width=\textwidth}
 \begin{tabular}{p{2.0cm} p{2.1cm} p{1.7cm} c p{1.2cm} p{2.1cm} c c c c c c c p{2.2cm} p{2.5cm}}
 \toprule
 \textbf{Study} & \textbf{Problem} & \textbf{Dataset} & \textbf{Cls} & \textbf{Size} & \textbf{Models} & \textbf{TL} & \textbf{CB} & \textbf{MC} & \textbf{GC} & \textbf{SH} & \textbf{RT} & \textbf{EA} & \textbf{Metrics} & \textbf{Principal limitation} \\
@@ -422,7 +423,8 @@ Saifullah et al.\ \cite{saifullah2022robust}, 2022 & Robustness of doc.\ classif
 \textbf{Proposed}, 2026 & \textbf{German doc.\ type classification (layout only)} & \textbf{DocLayNet-base} & \textbf{6} & \textbf{8{,}057} & \textbf{Custom CNN, ResNet50} & \cmark & \cmark & \cmark & \cmark & \xmark & \cmark & \cmark & \textbf{Acc, macro-F1, AUC} & \textbf{Single dataset; SHAP pending} \\
 \bottomrule
 \end{tabular}
-\end{sidewaystable}
+\end{adjustbox}
+\end{table}
 
 \subsection{Synthesis of Literature and Identified Gap}
 Several consistent patterns emerge from the reviewed studies.

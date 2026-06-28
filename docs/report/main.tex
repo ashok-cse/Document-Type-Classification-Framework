@@ -394,9 +394,8 @@ The comparison is synthesised in prose below rather than restated row by row.
 % TODO(student): extend this matrix to 12--20 rows with additional recent
 % peer-reviewed studies before final submission.
 
-\begin{sidewaystable}[p]
+\begin{table}[!ht]
 \centering
-\tiny
 \caption{Comparative literature review matrix summarising datasets, models,
 class balancing, multi-model comparison, explainability, robustness, efficiency
 analysis, and evaluation in closely related document-image and document-AI
@@ -405,6 +404,8 @@ studies, contrasted with the proposed German layout-based framework. Symbols:
 TL transfer learning, CB class balancing, MC multi-model comparison,
 GC Grad-CAM, SH SHAP, RT robustness testing, EA efficiency analysis.}
 \label{tab:literature_matrix}
+\scriptsize
+\begin{adjustbox}{max width=\textwidth}
 \begin{tabular}{p{2.0cm} p{2.1cm} p{1.7cm} c p{1.2cm} p{2.1cm} c c c c c c c p{2.2cm} p{2.5cm}}
 \toprule
 \textbf{Study} & \textbf{Problem} & \textbf{Dataset} & \textbf{Cls} & \textbf{Size} & \textbf{Models} & \textbf{TL} & \textbf{CB} & \textbf{MC} & \textbf{GC} & \textbf{SH} & \textbf{RT} & \textbf{EA} & \textbf{Metrics} & \textbf{Principal limitation} \\
@@ -422,7 +423,8 @@ Saifullah et al.\ \cite{saifullah2022robust}, 2022 & Robustness of doc.\ classif
 \textbf{Proposed}, 2026 & \textbf{German doc.\ type classification (layout only)} & \textbf{DocLayNet-base} & \textbf{6} & \textbf{8{,}057} & \textbf{Custom CNN, ResNet50} & \cmark & \cmark & \cmark & \cmark & \xmark & \cmark & \cmark & \textbf{Acc, macro-F1, AUC} & \textbf{Single dataset; SHAP pending} \\
 \bottomrule
 \end{tabular}
-\end{sidewaystable}
+\end{adjustbox}
+\end{table}
 
 \subsection{Synthesis of Literature and Identified Gap}
 Several consistent patterns emerge from the reviewed studies.
@@ -498,7 +500,7 @@ int64 cast failure for base), so the pipeline bypasses
 
 \begin{figure}[!ht]
 \centering
-\includegraphics[width=0.85\linewidth]{figures/f1_class_distribution.png}
+\includegraphics[width=0.85\linewidth]{figures/f1_class_distribution.pdf}
 \caption{Class distribution of the DocLayNet-base dataset used in this study.
 The six functional document types are strongly imbalanced, with
 \texttt{financial\_reports} the largest and \texttt{government\_tenders} the
@@ -508,7 +510,7 @@ smallest class, which motivates class-weighted loss and augmentation.}
 
 \begin{figure}[!ht]
 \centering
-\includegraphics[width=0.95\linewidth]{figures/f2_sample_per_class.png}
+\includegraphics[width=0.95\linewidth]{figures/f2_sample_per_class.pdf}
 \caption{One representative scanned page per class. The six categories differ in
 masthead style, column structure, table density, and whitespace --- the visual
 cues a layout-based CNN is expected to learn.}
@@ -652,7 +654,7 @@ ResNet50   & 24.1\,M & \textbf{0.761} & \textbf{0.719} & \textbf{0.780} & \textb
 
 \begin{figure}[!ht]
 \centering
-\includegraphics[width=0.7\linewidth]{figures/f9_model_comparison.png}
+\includegraphics[width=0.7\linewidth]{figures/f9_model_comparison.pdf}
 \caption{Accuracy, macro-F1, and macro-AUC for the custom CNN versus ResNet50 on
 the test set. Transfer learning yields a large, consistent improvement across all
 three metrics.}
@@ -671,11 +673,11 @@ near-chance macro-AUC.
 \begin{figure}[!ht]
 \centering
 \begin{subfigure}{0.49\linewidth}\centering
-  \includegraphics[width=\linewidth]{figures/f7_resnet50_confusion.png}
+  \includegraphics[width=\linewidth]{figures/f7_resnet50_confusion.pdf}
   \caption{ResNet50 confusion matrix.}
 \end{subfigure}\hfill
 \begin{subfigure}{0.49\linewidth}\centering
-  \includegraphics[width=\linewidth]{figures/f8_resnet50_roc.png}
+  \includegraphics[width=\linewidth]{figures/f8_resnet50_roc.pdf}
   \caption{ResNet50 ROC curves (macro-AUC 0.956).}
 \end{subfigure}
 \caption{Per-class behaviour of the ResNet50 model: counts/row-normalised
@@ -687,11 +689,11 @@ Errors concentrate in \texttt{scientific\_articles}.}
 \begin{figure}[!ht]
 \centering
 \begin{subfigure}{0.49\linewidth}\centering
-  \includegraphics[width=\linewidth]{figures/f5_custom_cnn_confusion.png}
+  \includegraphics[width=\linewidth]{figures/f5_custom_cnn_confusion.pdf}
   \caption{Custom CNN confusion matrix.}
 \end{subfigure}\hfill
 \begin{subfigure}{0.49\linewidth}\centering
-  \includegraphics[width=\linewidth]{figures/f6_custom_cnn_roc.png}
+  \includegraphics[width=\linewidth]{figures/f6_custom_cnn_roc.pdf}
   \caption{Custom CNN ROC curves.}
 \end{subfigure}
 \caption{The from-scratch custom CNN collapses toward the majority class,
@@ -708,7 +710,7 @@ rather than arbitrary body text, supporting the layout-based hypothesis.
 
 \begin{figure}[!ht]
 \centering
-\includegraphics[width=0.95\linewidth]{figures/f10_gradcam.png}
+\includegraphics[width=0.95\linewidth]{figures/f10_gradcam.pdf}
 \caption{Grad-CAM overlays for the ResNet50 model, one representative page per
 class. Warm regions indicate the page areas most responsible for the predicted
 type; attention concentrates on mastheads and structural layout regions.}
@@ -726,7 +728,7 @@ service stays responsive.
 
 \begin{figure}[!ht]
 \centering
-\includegraphics[width=0.6\linewidth]{figures/f11_robustness.png}
+\includegraphics[width=0.6\linewidth]{figures/f11_robustness.pdf}
 \caption{Robustness of both models: clean test macro-F1 versus
 phone-camera-simulated macro-F1. ResNet50 loses about 0.118 macro-F1 but remains
 usable; the collapsed custom CNN is unaffected because it already predicts a
