@@ -41,6 +41,25 @@ The current local dataset contains **8,057 document images** across six classes:
 The notebook uses a stratified **70 / 15 / 15** train/validation/test split over
 these images.
 
+### German-language filtering
+
+DocLayNet is ~95% English and only ~2.5% German. Because this project targets
+German documents, the notebook applies a **strict German-language filter** in
+section 1: each page's annotation text is run through `langdetect`, and a page is
+kept only if it is **confidently German** (`p(de) ≥ GERMAN_MIN_PROB`, default
+0.90, with at least `GERMAN_MIN_TEXT` characters). Knobs: `STRICT_GERMAN`,
+`GERMAN_MIN_PROB`, `GERMAN_MIN_TEXT` (set `STRICT_GERMAN=False` for the
+all-languages baseline). The notebook emits a **per-class yield report** — pages
+scanned (all languages) vs. German pages kept — to `figures/t0_german_yield.csv`
+and a grouped-bar figure `figures/f0_german_yield.png`, making the size of the
+genuinely-German subset explicit and surfacing under-represented classes.
+
+> The **8,057-image counts above are the pre-filter** DocLayNet-base
+> distribution; the committed model and figures predate the filter. Re-running
+> the notebook with `STRICT_GERMAN=True` trains on the (smaller) genuinely-German
+> subset. Layout is largely language-independent, so the method is unchanged —
+> only which pages train the model.
+
 ## Repository layout
 
 ```

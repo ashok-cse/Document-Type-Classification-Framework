@@ -62,7 +62,19 @@ The local extracted dataset contains **8,057 pages**. The class distribution is:
 
 The distribution is **imbalanced**; mitigation will use class-weighted loss and strong augmentation for minority classes.
 
-### 4.4 Limitations
+> **Note.** The counts above describe the **pre-filter** DocLayNet-base corpus. DocLayNet is ~95% English and only ~2.5% German, so the notebook applies the strict German-language filter described in §4.4 before training; the genuinely-German subset is smaller and is quantified by the yield report.
+
+### 4.4 German-Language Filtering
+
+DocLayNet does not expose an explicit language field, and the corpus is heavily English-dominant: only **~2.5%** of pages are German (the rest are mostly English, with some French and Japanese). Because this project targets *German* documents, the notebook applies a **strict German-language filter** rather than training on the full multilingual corpus:
+
+- For each page, the annotation text is concatenated and passed through **`langdetect`**.
+- A page is kept only if it is **confidently German** — detection probability `p(de) ≥ GERMAN_MIN_PROB` (default 0.90) with at least `GERMAN_MIN_TEXT` (default 40) characters of text. The detector is seeded for reproducibility.
+- Pages that are confidently non-German, or carry too little text to decide, are dropped (counted as `not_german` / `too_little_text`).
+
+This keeps the "German" claim accurate at the cost of a smaller training set. The notebook emits a **per-class German-yield report**: a table of pages *scanned* (all languages) versus German pages *kept*, with the per-class German rate (`figures/t0_german_yield.csv`), and a grouped-bar figure (`figures/f0_german_yield.png`). This makes the size of the genuinely-German subset explicit and surfaces any class that becomes under-represented after filtering. Because visual layout is largely language-independent, the CNN methodology is unaffected — the filter changes *which* pages train the model, not *how* it learns. Setting `STRICT_GERMAN=False` reproduces the all-languages baseline for comparison.
+
+### 4.5 Limitations
 
 - The local six-class dataset contains 8,057 images and remains imbalanced. Class weighting, augmentation, and transfer learning are required.
 - Handwritten German documents and real phone-camera captures are **not available** in any public German document-type-classification dataset; this is acknowledged as a limitation. Robustness to phone-camera-like conditions is evaluated using *synthesised* augmentations (perspective warp, brightness shifts, JPEG compression, motion blur). Real handwritten and phone-camera evaluation is left as future work.

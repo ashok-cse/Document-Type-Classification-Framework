@@ -192,16 +192,35 @@ for c in classes:
     doc.add_paragraph(c, style="List Bullet")
 
 doc.add_paragraph(
-    "DocLayNet does not expose an explicit language field. Approximately "
-    "2.5 % of pages across the full DocLayNet corpus are in German; the "
-    "remainder are multilingual with English dominant. The CNN classifier "
-    "treats document type from visual layout independently of language, so "
-    "training on the full base corpus is appropriate and the trained model "
-    "remains directly applicable to German document routing pipelines."
-)
-doc.add_paragraph(
     "Link – DocLayNet-base (HuggingFace): "
     "https://huggingface.co/datasets/pierreguillou/DocLayNet-base"
+)
+
+add_heading("German-Language Filtering", level=2)
+doc.add_paragraph(
+    "DocLayNet does not expose an explicit language field, and the corpus is "
+    "heavily English-dominant: only about 2.5 % of pages across the full "
+    "DocLayNet are German (the remainder are mostly English, with some French "
+    "and Japanese). Because this project targets German documents, the notebook "
+    "applies a strict German-language filter rather than training on the full "
+    "multilingual corpus. For each page, the annotation text is concatenated and "
+    "passed through the langdetect library; a page is kept only when it is "
+    "confidently classified as German — detection probability p(de) ≥ 0.90 with "
+    "at least 40 characters of text (controlled by the STRICT_GERMAN, "
+    "GERMAN_MIN_PROB and GERMAN_MIN_TEXT settings). The language detector is "
+    "seeded for reproducibility."
+)
+doc.add_paragraph(
+    "This keeps the “German” claim accurate at the cost of a smaller training "
+    "set. The notebook emits a per-class German-yield report — a table of pages "
+    "scanned (all languages) versus German pages kept, with the German rate per "
+    "class (figures/t0_german_yield.csv), and a companion grouped-bar figure "
+    "(figures/f0_german_yield.png). This makes the size of the genuinely-German "
+    "subset explicit and surfaces any class that becomes under-represented after "
+    "filtering. Note that visual layout is largely language-independent, so the "
+    "CNN methodology is unaffected; the filter changes which pages train the "
+    "model, not how it learns. The 8,057-page distribution above describes the "
+    "pre-filter DocLayNet-base corpus."
 )
 
 add_heading("Implementation Note on Dataset Loading", level=2)
