@@ -1,22 +1,32 @@
 # Deploying DTCF on Easypanel
 
-This guide walks through the end-to-end deployment of the DTCF inference service
-on an Easypanel VPS.
+This guide deploys the **whole DTCF project** on an Easypanel VPS. The project is
+a single FastAPI app that serves **both the web UI (front-end) and the prediction
+API (back-end)** from one container — so this one app is the complete deployment;
+there is no separate front-end to host.
+
+> **Recommended build for Easypanel: the root `Dockerfile` (full TensorFlow).**
+> Unlike the free-tier TFLite image, this build runs the full Keras model, so the
+> result panel includes **live Grad-CAM explanations, an uncertainty estimate,
+> and a reliability recommendation** — the project's headline advantage. This
+> needs more RAM (see §0).
 
 > **The trained model is baked into the Docker image** (`models/resnet50.keras`,
-> committed in the repo). The default deployment is self-contained — no
-> HuggingFace upload and no model env vars are required. Sections 1–2 and the HF
-> env vars in §5 are an **optional** alternative for serving a model from
-> HuggingFace Hub instead (e.g. to swap models without rebuilding the image).
+> committed in the repo). The deployment is self-contained — no HuggingFace
+> upload and no model env vars are required. Sections 1–2 and the HF env vars in
+> §5 are an **optional** alternative for serving a model from HuggingFace Hub.
 
 ---
 
 ## 0. Prerequisites
 
 - An Easypanel instance (free Easypanel install on any VPS — Hetzner, Contabo, DigitalOcean, etc.).
-- A VPS with **≥ 2 GB RAM** and **≥ 10 GB disk** (TF + ResNet50 are the dominant footprint).
-- A public **GitHub** repository containing this project.
-- A **HuggingFace** account (free) for hosting the trained model file.
+- A VPS with **≥ 2 GB RAM** (≥ 3 GB recommended) and **≥ 10 GB disk**. Full
+  TensorFlow + ResNet50 use ~1–1.5 GB at load, and Grad-CAM (gradient pass) adds
+  headroom — do **not** use a 512 MB box for this build.
+- A public **GitHub** repository containing this project (already at
+  `github.com/ashok-cse/Document-Type-Classification-Framework`).
+- *(Optional)* a HuggingFace account — only if you choose the HF model path (§2).
 
 ---
 
@@ -118,7 +128,10 @@ Subsequent deploys are faster thanks to Docker layer caching.
 
 When the container is up:
 
-- Visit your Easypanel-issued URL → the upload UI.
+- Visit your Easypanel-issued URL → the upload UI (front-end).
+- Upload a page or click a sample → the result panel shows the predicted type,
+  confidence, **uncertainty**, a **recommendation**, and a **Grad-CAM overlay**
+  (this full build serves Grad-CAM live).
 - Visit `<url>/health` → should return `{"status":"ok","model_loaded":true,...}`.
 - Visit `<url>/docs` → FastAPI's interactive Swagger UI.
 
