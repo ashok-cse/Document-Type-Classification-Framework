@@ -1,5 +1,5 @@
 GitHub repository (all code, notebook, app, scripts):
-https://github.com/ashok-cse/Document-Type-Classification-Framework
+https://github.com/ashok-cse/PR_SE26_German_Document_Type_Classification_with_CNNs
 
 Kaggle notebook (training + evaluation):
 https://www.kaggle.com/code/ashokkrcse/german-document-type-classification-with-cnns

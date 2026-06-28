@@ -25,7 +25,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Pull the app code and the baked model from the public GitHub repo.
 # Bump CACHE_BUST (or use the Space "Factory rebuild") to pick up new commits.
-ARG REPO=https://github.com/ashok-cse/Document-Type-Classification-Framework
+ARG REPO=https://github.com/ashok-cse/PR_SE26_German_Document_Type_Classification_with_CNNs
 ARG CACHE_BUST=2026-06-28
 RUN git clone --depth 1 "$REPO" /tmp/src \
     && cp -r /tmp/src/app /app/app \

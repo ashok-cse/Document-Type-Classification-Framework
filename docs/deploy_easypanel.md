@@ -25,7 +25,7 @@ there is no separate front-end to host.
   TensorFlow + ResNet50 use ~1–1.5 GB at load, and Grad-CAM (gradient pass) adds
   headroom — do **not** use a 512 MB box for this build.
 - A public **GitHub** repository containing this project (already at
-  `github.com/ashok-cse/Document-Type-Classification-Framework`).
+  `github.com/ashok-cse/PR_SE26_German_Document_Type_Classification_with_CNNs`).
 - *(Optional)* a HuggingFace account — only if you choose the HF model path (§2).
 
 ---

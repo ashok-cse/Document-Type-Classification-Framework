@@ -203,6 +203,6 @@ Endpoints:
 - [x] Proposal document — `proposal.md`
 - [x] Code — `notebooks/german_doc_classification.ipynb`
 - [x] README with run instructions — this file
-- [x] Public GitHub repository — https://github.com/ashok-cse/Document-Type-Classification-Framework
+- [x] Public GitHub repository — https://github.com/ashok-cse/PR_SE26_German_Document_Type_Classification_with_CNNs
 - [ ] Kaggle Notebook link (add once notebook is uploaded and made public)
 - [ ] Generated figures attached to the Teams submission

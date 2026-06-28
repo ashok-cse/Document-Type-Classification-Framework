@@ -26,4 +26,4 @@ It serves both the web UI and the prediction API from one container:
 The `Dockerfile` clones the project from GitHub at build time (app code + the
 trained `resnet50.keras`), so this Space repo stays tiny and needs no git-LFS.
 
-- Source: https://github.com/ashok-cse/Document-Type-Classification-Framework
+- Source: https://github.com/ashok-cse/PR_SE26_German_Document_Type_Classification_with_CNNs
