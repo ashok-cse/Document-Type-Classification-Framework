@@ -45,11 +45,11 @@ RUN mkdir -p /app/.cache/huggingface
 EXPOSE 8000
 
 # Container-level health check so Easypanel can detect an unhealthy worker.
-# Honours $PORT (Render injects it; Easypanel uses the ENV default of 8000).
+# Honours $PORT when a platform injects it; ENV default 8000 otherwise.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=90s --retries=3 \
     CMD python -c "import os,sys,json,urllib.request; p=os.environ.get('PORT','8000'); sys.exit(0 if json.load(urllib.request.urlopen(f'http://127.0.0.1:{p}/health'))['model_loaded'] else 1)"
 
 # Single worker — TF inference is CPU-heavy; scale horizontally instead.
-# Shell form so $PORT is expanded: Render sets PORT (default 10000); the ENV
-# default above keeps Easypanel/local on 8000.
+# Shell form so $PORT is expanded when a platform injects it; the ENV default
+# above keeps Easypanel/local on 8000.
 CMD uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 1

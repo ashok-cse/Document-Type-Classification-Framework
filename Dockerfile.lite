@@ -1,4 +1,4 @@
-# DTCF inference — SLIM image for low-RAM / free-tier hosts (e.g. Render free).
+# DTCF inference — SLIM image for low-RAM / 512 MB-class hosts (optional).
 # Serves the .tflite model with a lightweight LiteRT runtime instead of full
 # TensorFlow, so it fits in ~512 MB RAM and builds a much smaller image.
 # The model is baked in, so the container is fully self-contained.
@@ -38,9 +38,9 @@ COPY models/resnet50.tflite /models/resnet50.tflite
 
 EXPOSE 8000
 
-# Health check honours $PORT (Render injects it; ENV default keeps 8000 elsewhere).
+# Health check honours $PORT when injected; ENV default keeps 8000 otherwise.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
     CMD python -c "import os,sys,json,urllib.request; p=os.environ.get('PORT','8000'); sys.exit(0 if json.load(urllib.request.urlopen(f'http://127.0.0.1:{p}/health'))['model_loaded'] else 1)"
 
-# Shell form so $PORT is expanded (Render sets it; defaults to 8000).
+# Shell form so $PORT is expanded when injected; defaults to 8000.
 CMD uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 1

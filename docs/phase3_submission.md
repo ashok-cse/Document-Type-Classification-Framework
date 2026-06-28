@@ -100,7 +100,7 @@ Use **`docs/presentation_outline.md`** — it has the 2-min demo script and the
 
 - [x] **Frontend demo** — public, with bundled one-click samples + example sources.
 - [x] **Non-blocking inference worker** — `run_in_threadpool` in `app/main.py`.
-- [x] **Free-tier deployment** — TFLite + LiteRT, `Dockerfile.lite`, `render.yaml`.
+- [x] **Free deployment (with Grad-CAM)** — Hugging Face Space (`hf_space/`, full TensorFlow).
 - [x] **Report (LaTeX, elsarticle template)** — `docs/report/` (main.tex + Bibliography.bib + bst + figures), real metrics; needs student expansion (see TODOs above).
 - [x] **Presentation + demo script** — `docs/presentation_outline.md`.
 - [ ] **Overleaf edit link** — *you* must create it (needs your Overleaf account).

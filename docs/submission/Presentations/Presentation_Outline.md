@@ -88,7 +88,7 @@ M.Sc. Software Engineering, UE Potsdam · Supervisor: Raja Hashim Ali.
 - Deployed **free on Hugging Face Spaces** (full TensorFlow, ~16 GB CPU): serves
   the UI + API **and a live Grad-CAM overlay + uncertainty** per prediction.
 - Non-blocking worker-thread inference; one public URL (browser UI + JSON API).
-- (A 512 MB TFLite build also exists for Render free, but it cannot run Grad-CAM.)
+- (A 512 MB TFLite build also exists for low-RAM hosts, but it cannot run Grad-CAM.)
 
 ### Slide 10 — Conclusion & future work (40 s)
 - A fine-tuned ResNet50 classifies German pages from layout alone at 0.761 acc /

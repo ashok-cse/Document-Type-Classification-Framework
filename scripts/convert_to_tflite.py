@@ -2,7 +2,7 @@
 """Convert the trained Keras ResNet50 to a TFLite model for the free-tier image.
 
 Why: full TensorFlow + ResNet50 needs ~1 GB RAM, which OOMs on small/free hosts
-(e.g. Render's 512 MB free tier). A `.tflite` model served with a lightweight
+(e.g. 512 MB-class / low-RAM hosts). A `.tflite` model served with a lightweight
 LiteRT runtime fits comfortably and shrinks the image.
 
 This requires full TensorFlow (the training-side `requirements.txt`), so run it

@@ -1,6 +1,6 @@
 # Slim inference deps for the free-tier image (Dockerfile.lite).
 # Serves the .tflite model with a lightweight LiteRT runtime — NO TensorFlow —
-# so the container fits in ~512 MB RAM (e.g. Render's free plan).
+# so the container fits in ~512 MB RAM (low-RAM / 512 MB-class hosts).
 # The full-TF inference side stays in app/requirements.txt.
 fastapi>=0.110
 uvicorn[standard]>=0.27
