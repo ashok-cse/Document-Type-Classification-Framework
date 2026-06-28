@@ -15,10 +15,15 @@ from pathlib import Path
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.concurrency import run_in_threadpool
 
 from app import inference
 
 APP_DIR = Path(__file__).parent
+
+# Reject oversized uploads early (a large scan would also be slow / hit proxy
+# body limits). Configurable; default 10 MB.
+MAX_UPLOAD_BYTES = int(os.getenv("MAX_UPLOAD_MB", "10")) * 1024 * 1024
 
 app = FastAPI(
     title="DTCF — German Document Type Classification",
@@ -68,9 +73,17 @@ async def predict(file: UploadFile = File(...)) -> JSONResponse:
     data = await file.read()
     if not data:
         raise HTTPException(status_code=400, detail="Empty file")
+    if len(data) > MAX_UPLOAD_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail=f"File too large ({len(data) // 1024} KB); "
+                   f"max is {MAX_UPLOAD_BYTES // (1024 * 1024)} MB.",
+        )
 
     try:
-        result = inference.predict(data)
+        # Inference is blocking and CPU-bound — run it in a worker thread so the
+        # event loop (page, /health, other requests) stays responsive.
+        result = await run_in_threadpool(inference.predict, data)
     except FileNotFoundError as exc:
         raise HTTPException(status_code=503, detail=str(exc))
     except Exception as exc:
