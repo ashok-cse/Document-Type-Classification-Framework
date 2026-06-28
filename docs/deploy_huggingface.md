@@ -7,7 +7,7 @@ which can't compute Grad-CAM). The Space sleeps after inactivity and wakes on th
 next visit. No credit card required.
 
 The ready-to-use Space files are in **`hf_space/`**:
-- `README.md` — Space metadata (`sdk: docker`, `app_port: 8000`).
+- `README.md` — Space metadata (`sdk: docker`, `app_port: 7860`).
 - `Dockerfile` — clones this GitHub repo at build time (app + model), so the
   Space repo needs **no large files and no git-LFS**.
 

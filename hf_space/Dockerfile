@@ -11,7 +11,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     TF_CPP_MIN_LOG_LEVEL=3 \
     LOCAL_MODEL_PATH=/app/models/resnet50.keras \
     EAGER_LOAD=1 \
-    PORT=8000 \
+    PORT=7860 \
     HOME=/tmp \
     HF_HOME=/tmp/hf \
     MPLCONFIGDIR=/tmp/mpl
@@ -38,7 +38,7 @@ RUN pip install -r /app/app/requirements.txt
 # World-readable so the non-root Space user can read app + model.
 RUN chmod -R a+rX /app && mkdir -p /tmp/hf /tmp/mpl && chmod -R 777 /tmp/hf /tmp/mpl
 
-EXPOSE 8000
+EXPOSE 7860
 
 # Single worker; HF routes to the port declared as app_port in README.md.
-CMD uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 1
+CMD uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-7860} --workers 1
