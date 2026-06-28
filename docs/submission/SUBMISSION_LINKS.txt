@@ -1,0 +1,31 @@
+PATTERN RECOGNITION (SS26) — PHASE III SUBMISSION
+=================================================
+
+Project : German Document Type Classification using CNNs
+Student : Ashok Kumar Meena
+Program : M.Sc. Software Engineering
+Institution : University of Europe for Applied Sciences, Potsdam
+Supervisor : Raja Hashim Ali
+
+-------------------------------------------------------------------
+EDITABLE OVERLEAF REPORT (Phase III report — editable link)
+-------------------------------------------------------------------
+https://www.overleaf.com/7776614458pjdvxffxyfxs#a170c0
+
+-------------------------------------------------------------------
+CODE & RESOURCES
+-------------------------------------------------------------------
+GitHub repository : https://github.com/ashok-cse/PR_SE26_German_Document_Type_Classification_with_CNNs
+Kaggle notebook   : https://www.kaggle.com/code/ashokkrcse/german-document-type-classification-with-cnns
+Live demo (HF Space, full model + Grad-CAM) :
+                    https://ashokcse-document-type-classification-framework.hf.space
+
+-------------------------------------------------------------------
+NOTES
+-------------------------------------------------------------------
+- The Overleaf link above is shared with edit access and will be used for
+  grading; it can keep being edited after the 28 June submission.
+- The live demo serves the upload UI and the prediction API from one app, and
+  returns the predicted document type, confidence, uncertainty, and a live
+  Grad-CAM explanation. (Free tier sleeps when idle; first request after a
+  pause takes ~30-60 s to wake.)
