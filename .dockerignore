@@ -15,6 +15,7 @@ figures/
 # resnet50.keras file in the build context; exclude everything else under models/.
 models/*
 !models/resnet50.keras
+!models/resnet50.tflite
 docs/
 proposal.md
 README.md

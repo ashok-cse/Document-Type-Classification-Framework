@@ -63,12 +63,15 @@ python docs/build_submission_docx.py  # regenerates the Phase 2 .docx
 
 ## Deployment
 
-The Docker image is self-contained (model baked in) and deploys as a container.
-Two documented targets, both build the root `Dockerfile` with no extra setup:
-- **Render** — `render.yaml` Blueprint (`docs/deploy_render.md`). Must use the **Standard 2 GB** plan or larger; Free/Starter (512 MB) OOM on model load. Render injects `$PORT`; the Dockerfile `CMD` binds to it (falls back to 8000 for local/Easypanel).
-- **Easypanel** — `docs/deploy_easypanel.md`.
+The image is self-contained (model baked in) and deploys as a container. **Two Docker images, by RAM budget:**
+- **`Dockerfile` (full TensorFlow)** — serves `models/resnet50.keras`. Needs ~1 GB RAM. For Easypanel / Render Standard (≥2 GB).
+- **`Dockerfile.lite` (slim)** — serves `models/resnet50.tflite` via a LiteRT runtime (`ai-edge-litert`, no TensorFlow). ~250–350 MB RAM, smaller image. **This is what fits Render's free 512 MB plan**, and what `render.yaml` points at.
 
-Serverless platforms (Vercel, Cloudflare Workers/Pages) **cannot** host the TF backend — it exceeds their function size/runtime limits. They can host a static front-end only.
+Both bake the model in and bind to `$PORT` (Render injects it; ENV default 8000 for local/Easypanel). `app/inference.py` auto-selects the backend by file extension (`.tflite` → LiteRT, else Keras) and uses **pure-NumPy ResNet50 preprocessing** (so the lite path needs no TF). The TFLite model is regenerated with `python scripts/convert_to_tflite.py` (needs full TF; uses a SavedModel-export workaround because direct `from_keras_model` conversion hits a Keras 3 MLIR bug). Slim deps live in `app/requirements-lite.txt`.
+
+Deploy targets: **Render** — `render.yaml` Blueprint + `docs/deploy_render.md` (free tier via the slim image). **Easypanel** — `docs/deploy_easypanel.md`.
+
+Serverless platforms (Vercel, Cloudflare Workers/Pages) **cannot** host the backend — even the slim runtime exceeds their function size/runtime limits. They can host a static front-end only.
 
 ## Trained models are committed; figures have two generators
 
