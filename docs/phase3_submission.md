@@ -14,25 +14,44 @@ Grading timeline: initial (ungraded) feedback **04 July**; final grading on the
 
 ## 1. The report → Overleaf (editable link)
 
-The report is written and ready in **`docs/report/`**:
-- `main.tex` — the full report (title page, all sections, real results, figures, refs).
-- `figures/` — the 9 figures referenced by `main.tex`.
+The report follows the **course Elsevier `elsarticle` template**
+(SS26_Machine_Learning_Report_Template) and is ready in **`docs/report/`**:
+- `main.tex` — the full report in `elsarticle` format (frontmatter with
+  highlights/keywords, Introduction → Literature Review → Methodology →
+  Results-by-RQ → Discussion → Conclusion → Declarations), with our real results,
+  figures, equations, hyperparameter table, and a literature-review matrix.
+- `Bibliography.bib` — real starter references (cited via `\cite`, `elsarticle-num`).
+- `elsarticle-num.bst` — bibliography style (Overleaf also has it built in).
+- `figures/` — the 9 result figures referenced by `main.tex`.
 
 ### Create the editable Overleaf link
 1. Zip the report folder so it's self-contained:
    ```bash
-   cd docs/report && zip -r ../dtcf_report_overleaf.zip main.tex figures
+   cd docs/report && zip -r ../dtcf_report_overleaf.zip main.tex Bibliography.bib elsarticle-num.bst figures
    ```
 2. Go to Overleaf → **New Project → Upload Project** → upload `dtcf_report_overleaf.zip`.
-3. Open the project; **Menu → Compiler: pdfLaTeX**; click **Recompile** (it
-   compiles with stock Overleaf packages — no extra setup).
+3. **Menu → Compiler: pdfLaTeX**; **Recompile** (run twice so BibTeX resolves
+   citations). `elsarticle` is built into Overleaf — no extra setup.
 4. **Share → Turn on link sharing → "Anyone with this link can edit"** → copy the
-   **edit** link (not the read-only one).
+   **edit** link (not read-only).
 5. Put that URL in a plain text file (e.g. `overleaf_link.txt`) and submit it.
 
-> If the instructor provided a *specific* Overleaf template, create the project
-> from that template instead and paste the section bodies from `main.tex` into it
-> (the content maps 1:1 to the template's Contents page).
+### ⚠️ Student TODOs before the 11 July grading (the template demands more than is auto-fillable)
+The structure and our content are in place, but the template has hard
+requirements only you can finish:
+- [ ] **Length:** the template asks for **≥ 30 pages** — expand each section's
+      paragraphs to the required 7–10 sentences.
+- [ ] **References:** grow `Bibliography.bib` to **25–50** entries with **≥ 80 %
+      after 2021**, journals/conferences preferred (IEEE/Springer/ACM/Elsevier/MDPI),
+      BibTeX from Google Scholar; avoid arXiv/websites.
+- [ ] **Literature matrix:** expand `tab:literature_matrix` to **12–20** real studies.
+- [ ] **SHAP:** the template's Explainable-AI section requires **Grad-CAM *and*
+      SHAP**. We have Grad-CAM only — either add a SHAP analysis or keep it
+      explicitly scoped as future work (already flagged in the text).
+- [ ] **Workflow + graphical-abstract figures:** make these in PowerPoint/Canva,
+      export as **PDF**, and drop into `figures/` (placeholders are commented in `main.tex`).
+- [ ] **Figures as PDF:** the template prefers vector PDFs at ≥300 ppi; our result
+      charts are PNG (fine to start, regenerate as PDF if the grader insists).
 
 ### ⚠️ Accuracy note before you submit
 The results in the report are the **real committed metrics** from the
@@ -82,7 +101,7 @@ Use **`docs/presentation_outline.md`** — it has the 2-min demo script and the
 - [x] **Frontend demo** — public, with bundled one-click samples + example sources.
 - [x] **Non-blocking inference worker** — `run_in_threadpool` in `app/main.py`.
 - [x] **Free-tier deployment** — TFLite + LiteRT, `Dockerfile.lite`, `render.yaml`.
-- [x] **Report (LaTeX)** — `docs/report/main.tex` + figures, real metrics.
+- [x] **Report (LaTeX, elsarticle template)** — `docs/report/` (main.tex + Bibliography.bib + bst + figures), real metrics; needs student expansion (see TODOs above).
 - [x] **Presentation + demo script** — `docs/presentation_outline.md`.
 - [ ] **Overleaf edit link** — *you* must create it (needs your Overleaf account).
 - [ ] **Recorded video** — *you* must record it.
