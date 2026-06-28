@@ -77,6 +77,15 @@
     @keyframes spin { to { transform: rotate(360deg); } }
     .error { margin-top: 16px; background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c; font-size: 14px; padding: 11px 14px; border-radius: 10px; }
 
+    .samples { margin-top: 18px; border-top: 1px solid var(--line); padding-top: 16px; }
+    .samples .lbl { font-size: 13px; color: var(--muted); margin-bottom: 10px; }
+    .samples .strip { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+    .samples figure { margin: 0; cursor: pointer; }
+    .samples img { width: 100%; height: 84px; object-fit: cover; object-position: top; border: 1px solid var(--line); border-radius: 8px; background: #fff; transition: border-color .15s, transform .05s; }
+    .samples figure:hover img { border-color: var(--brand); }
+    .samples figure:active img { transform: translateY(1px); }
+    .samples figcaption { font-size: 11px; color: var(--ink); text-align: center; margin-top: 5px; }
+
     /* Results */
     #result { display: none; animation: rise .35s ease both; }
     @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
@@ -173,6 +182,17 @@
         </div>
       </div>
       <div id="error"></div>
+
+      <div class="samples">
+        <div class="lbl">No document handy? Click a sample page to classify it instantly:</div>
+        <div class="strip">
+          <figure data-cls="financial_reports"><img src="/static/samples/financial_reports.jpg" alt="financial report sample page" loading="lazy"><figcaption>Financial report</figcaption></figure>
+          <figure data-cls="laws_and_regulations"><img src="/static/samples/laws_and_regulations.jpg" alt="laws and regulations sample page" loading="lazy"><figcaption>Laws &amp; regs</figcaption></figure>
+          <figure data-cls="government_tenders"><img src="/static/samples/government_tenders.jpg" alt="government tender sample page" loading="lazy"><figcaption>Gov. tender</figcaption></figure>
+          <figure data-cls="manuals"><img src="/static/samples/manuals.jpg" alt="manual sample page" loading="lazy"><figcaption>Manual</figcaption></figure>
+          <figure data-cls="patents"><img src="/static/samples/patents.jpg" alt="patent sample page" loading="lazy"><figcaption>Patent</figcaption></figure>
+        </div>
+      </div>
     </div>
 
     <!-- Results -->
@@ -287,7 +307,7 @@
     dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
     dropzone.addEventListener('drop', (e) => { e.preventDefault(); dropzone.classList.remove('dragover'); if (e.dataTransfer.files.length) showFile(e.dataTransfer.files[0]); });
 
-    predictBtn.addEventListener('click', async () => {
+    async function runPredict() {
       if (!currentFile) return;
       predictBtn.disabled = true; predictBtn.innerHTML = '<span class="spinner"></span>Analyzing…'; errorBox.innerHTML = '';
       const form = new FormData(); form.append('file', currentFile);
@@ -297,7 +317,21 @@
         renderResult(await res.json());
       } catch (e) { errorBox.innerHTML = `<div class="error">${e.message}</div>`; }
       finally { predictBtn.disabled = false; predictBtn.textContent = 'Analyze document'; }
-    });
+    }
+    predictBtn.addEventListener('click', runPredict);
+
+    // Bundled sample pages: fetch the image, preview it, then classify.
+    async function classifySample(cls) {
+      try {
+        const resp = await fetch(`/static/samples/${cls}.jpg`);
+        const blob = await resp.blob();
+        showFile(new File([blob], `${cls}.jpg`, { type: 'image/jpeg' }));
+        preview.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        await runPredict();
+      } catch (e) { errorBox.innerHTML = `<div class="error">${e.message}</div>`; }
+    }
+    document.querySelectorAll('.samples figure').forEach((fig) =>
+      fig.addEventListener('click', () => classifySample(fig.dataset.cls)));
 
     function renderResult(data) {
       topClass.textContent = prettify(data.predicted_class);
