@@ -34,3 +34,4 @@ notebooks/*.executed.ipynb
 
 # Local Claude Code workspace settings — not part of the project.
 .claude/
+docs/dtcf_report_overleaf.zip

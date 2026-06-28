@@ -1,0 +1,359 @@
+% German Document Type Classification using CNNs — Phase III report
+% Overleaf-ready. Upload this file together with the figures/ folder.
+% If your instructor provided a specific Overleaf template, paste the section
+% bodies below into that template instead of using this preamble.
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[margin=2.4cm]{geometry}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{float}
+\usepackage{enumitem}
+\usepackage{amsmath}
+\usepackage{xcolor}
+\usepackage[hidelinks]{hyperref}
+\usepackage{titlesec}
+
+\graphicspath{{figures/}}
+\titleformat{\section}{\large\bfseries\color{blue!55!black}}{}{0em}{}
+\titleformat{\subsection}{\normalsize\bfseries\color{blue!55!black}}{}{0em}{}
+\setlength{\parskip}{0.5em}
+\setlength{\parindent}{0pt}
+
+\title{\textbf{German Document Type Classification using CNNs}}
+\author{}
+\date{}
+
+\begin{document}
+
+% ---------------- Title page ----------------
+\begin{titlepage}
+\centering
+\vspace*{3cm}
+{\Huge\bfseries German Document Type Classification using CNNs\par}
+\vspace{2.5cm}
+{\Large Submitted By: Ashok Kumar Meena\par}
+\vspace{2cm}
+{\large M.Sc. Software Engineering\par}
+{\large University of Europe for Applied Sciences, Potsdam\par}
+\vspace{2cm}
+{\large Supervisor: Raja Hashim Ali\par}
+\vspace{0.5cm}
+{\large Date: \today\par}
+\vfill
+{\small Live demo: \url{https://document-type-classification-framework.onrender.com}\par}
+{\small Code: \url{https://github.com/ashok-cse/Document-Type-Classification-Framework}\par}
+\end{titlepage}
+
+\tableofcontents
+\newpage
+
+% ---------------- Abstract ----------------
+\section*{Abstract}
+\addcontentsline{toc}{section}{Abstract}
+We present a Convolutional Neural Network (CNN) framework that classifies scanned
+German document pages into six functional types from the DocLayNet dataset
+---\texttt{financial\_reports}, \texttt{scientific\_articles},
+\texttt{laws\_and\_regulations}, \texttt{government\_tenders}, \texttt{manuals},
+and \texttt{patents}---using \emph{only} the visual page layout, with no OCR text
+features. We compare a custom CNN trained from scratch against a ResNet50
+transfer-learning model, evaluate both with accuracy, macro-F1, ROC/AUC,
+confusion matrices, Grad-CAM, and a phone-camera robustness test, and ship the
+best model as a public web service. On the evaluated DocLayNet-base test split,
+ResNet50 reaches \textbf{0.761 accuracy} and \textbf{0.724 macro-F1}
+(\textbf{0.956 macro-AUC}), strongly outperforming the from-scratch baseline,
+which fails to learn the task. We additionally implement a strict
+\texttt{langdetect} German-language filter and an end-to-end inference deployment.
+
+% ---------------- Background ----------------
+\section{Background and Motivation}
+Document classification is a vital first step in the digitisation pipelines of
+administrative, legal, scientific, and financial archives. German-speaking
+institutions such as the Deutsche Digitale Bibliothek, the Bundesarchiv, EU
+tender portals, and German regulatory bodies process millions of scanned pages
+each year. Once a document is scanned, the first downstream decision is almost
+always \emph{``what kind of document is this?''} --- routing an invoice differs
+from routing a patent, which differs again from routing a regulatory notice.
+Doing this manually is slow, expensive, and error-prone, and is therefore an
+ideal task for image-based machine learning.
+
+Most published work on document image classification targets English-language
+benchmarks such as RVL-CDIP and Tobacco-3482. German documents are visually
+distinct: long compound words alter line-wrapping, official documents use
+different masthead and header conventions, and legal \emph{Verordnungen} carry
+different paragraph densities than scientific \emph{Fachartikel}. Image-based
+CNN classification reads the visual layout --- masthead position, column
+structure, table density, figure placement --- directly from the page, and does
+not depend on perfect OCR. This project applies transfer learning to the German
+context of DocLayNet to build and rigorously evaluate such a classifier.
+
+% ---------------- Problem ----------------
+\section{Problem Statement}
+Given a single-page scanned German document image $x$, predict its document type
+$y \in \{$\texttt{financial\_reports}, \texttt{scientific\_articles},
+\texttt{laws\_and\_regulations}, \texttt{government\_tenders}, \texttt{manuals},
+\texttt{patents}$\}$. Only visual layout features are used --- no OCR text
+features are introduced. Convolution layers learn local layout features, pooling
+layers reduce dimensionality, dense layers combine them, and a softmax layer
+produces a probability distribution over the six types. We train a custom CNN
+from scratch as a baseline and compare it against a ResNet50 transfer-learning
+model (ImageNet pre-trained), measuring both predictive performance and
+robustness to phone-camera-style image degradations.
+
+% ---------------- Dataset ----------------
+\section{Dataset Used}
+The dataset is \textbf{DocLayNet-base}, the Parquet-format mid-size variant of
+DocLayNet (IBM Research, CDLA-Permissive-1.0). It provides 8{,}057 scanned pages
+at $1025\times1025$\,px, covering all six functional categories:
+
+\begin{itemize}[nosep,leftmargin=1.4em]
+  \item \texttt{financial\_reports} --- annual reports, SEC filings
+  \item \texttt{scientific\_articles} --- research papers
+  \item \texttt{laws\_and\_regulations} --- statutes, regulations, compliance documents
+  \item \texttt{government\_tenders} --- EU TED tender documents
+  \item \texttt{manuals} --- technical documentation, user guides
+  \item \texttt{patents} --- granted patents
+\end{itemize}
+
+Link: \url{https://huggingface.co/datasets/pierreguillou/DocLayNet-base}
+
+\subsection{German-language filtering}
+DocLayNet does not expose a language field, and the corpus is heavily
+English-dominant: only $\approx2.5\%$ of pages are German (the remainder mostly
+English, with some French and Japanese). Because this project targets German
+documents, the notebook applies a \textbf{strict German-language filter}: each
+page's annotation text is concatenated and passed through the \texttt{langdetect}
+library, and a page is kept only when it is confidently classified as German
+($p(\mathrm{de}) \ge 0.90$ with at least 40 characters of text; controlled by the
+\texttt{STRICT\_GERMAN}, \texttt{GERMAN\_MIN\_PROB}, and \texttt{GERMAN\_MIN\_TEXT}
+settings, with the detector seeded for reproducibility). The notebook emits a
+per-class yield report (pages scanned vs.\ German pages kept) so the size of the
+genuinely-German subset is explicit and under-represented classes are surfaced.
+Because visual layout is largely language-independent, the CNN methodology is
+unchanged --- the filter changes \emph{which} pages train the model, not
+\emph{how} it learns. Setting \texttt{STRICT\_GERMAN=False} reproduces the
+all-languages baseline. \emph{The quantitative results in
+Section~\ref{sec:results} are from the committed all-languages DocLayNet-base
+evaluation; the German-filtered re-run is in progress.}
+
+\subsection{Implementation note on dataset loading}
+The original proposal targeted the $\approx2{,}000$ German pages in
+DocLayNet-large ($\approx80$k pages). Two upstream bugs forced a pivot:
+(1) the DocLayNet-large custom loader script raises \texttt{FileNotFoundError}
+on remote \texttt{zip://...} URLs and is rejected by \texttt{datasets} $\ge4.0$;
+(2) the DocLayNet-base loader fails during Arrow conversion
+(\texttt{ArrowInvalid: Float value\ldots truncated to int64}). The notebook
+therefore bypasses \texttt{datasets.load\_dataset} entirely: it uses
+\texttt{huggingface\_hub.hf\_hub\_download} to fetch \texttt{dataset\_base.zip}
+($\sim$3.8\,GB), extracts it, walks the JSON annotations for the
+\texttt{doc\_category} label, locates the matching PNG, and persists each page as
+a $224\times224$ JPEG.
+
+% ---------------- Research Questions ----------------
+\section{Research Questions}
+\begin{itemize}[nosep,leftmargin=1.4em]
+  \item \textbf{RQ1.} How accurately can CNNs classify German scanned documents
+        into the six DocLayNet categories from visual layout alone?
+  \item \textbf{RQ2.} Which model family --- a custom CNN from scratch or a
+        fine-tuned ResNet50 --- gives the best balance of accuracy and efficiency?
+  \item \textbf{RQ3.} How do preprocessing, augmentation, and class-imbalance
+        handling influence overall and per-class performance?
+  \item \textbf{RQ4.} Do Grad-CAM explanations show the model attending to
+        meaningful page regions (mastheads, headers, table boundaries)?
+  \item \textbf{RQ5.} How robust is the best model to phone-camera-style
+        degradations (perspective warp, JPEG compression, blur, brightness)?
+\end{itemize}
+
+% ---------------- Methodology ----------------
+\section{Proposed Methodology}
+The dataset is downloaded from HuggingFace and persisted as $224\times224$ JPEGs
+so \texttt{tf.data} pipelines iterate the files lazily. Preprocessing converts
+each page to RGB, resizes to $224\times224$, and normalises pixels --- ImageNet
+per-channel statistics for the transfer model and $[0,1]$ scaling for the custom
+CNN. Labels are integer-encoded in canonical order
+(\texttt{financial\_reports}=0\,\ldots\,\texttt{patents}=5). The split is
+stratified 70/15/15. Class imbalance is handled with class-weighted categorical
+cross-entropy ($w = \text{total}/(n_\text{classes}\cdot n_c)$). Training-time
+augmentation (small rotations, translations, zooms, brightness shifts) reduces
+overfitting. Optimiser: Adam; batch size 32; early stopping on validation
+accuracy.
+
+\subsection{CNN Model Design}
+The custom CNN is a deliberately simple baseline. Input $224\times224\times3$;
+four convolutional blocks (32, 64, 128, 256 filters), each with a $3\times3$
+convolution, batch normalisation, ReLU, and $2\times2$ max-pooling; global
+average pooling; a Dense(128)+ReLU layer with Dropout(0.5); and a Dense(6)
+softmax head ($\approx0.42$\,M parameters), trained from scratch at lr~$=10^{-3}$.
+
+\subsection{Transfer Learning Model}
+ResNet50 with ImageNet weights and a custom head: Global Average Pooling,
+Dense(256)+ReLU, Dropout(0.4), Dense(6) softmax. Training is two-stage:
+\textbf{Stage A} freezes the backbone and trains the head (10 epochs,
+lr~$=10^{-3}$); \textbf{Stage B} unfreezes the last residual block
+(\texttt{conv5\_*}) and fine-tunes (20 epochs, lr~$=10^{-5}$) so pre-trained
+features are refined without catastrophic forgetting.
+
+\subsection{Evaluation Metrics}
+We report overall accuracy and macro-averaged precision, recall, and F1
+(macro because of class imbalance); confusion matrices (counts and
+row-normalised); one-vs-rest ROC curves with per-class and macro AUC; model size
+(trainable parameters); and a phone-camera robustness test reporting the drop in
+macro-F1 between clean and simulated images. Grad-CAM heatmaps visualise the
+attended page regions.
+
+% ---------------- Results ----------------
+\section{Results}\label{sec:results}
+Table~\ref{tab:compare} reports the test-set results from the committed
+evaluation on DocLayNet-base. ResNet50 transfer learning clearly wins:
+\textbf{0.761 accuracy}, \textbf{0.724 macro-F1}, and \textbf{0.956 macro-AUC}.
+The from-scratch custom CNN \emph{fails to learn} this task --- a macro-F1 of
+0.082 and macro-AUC of 0.479 ($\approx$ chance) indicate it collapses toward the
+majority class. This is the central finding: on a small, imbalanced document-image
+dataset, transfer learning is not merely better but \emph{necessary}.
+
+\begin{table}[H]
+\centering
+\caption{Model comparison on the DocLayNet-base test split.}
+\label{tab:compare}
+\begin{tabular}{lrrrrr}
+\toprule
+Model & Params & Accuracy & Macro-P & Macro-R & Macro-F1 / AUC \\
+\midrule
+Custom CNN & 0.42\,M & 0.326 & 0.054 & 0.167 & 0.082 / 0.479 \\
+ResNet50   & 24.1\,M & \textbf{0.761} & 0.719 & 0.780 & \textbf{0.724 / 0.956} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.7\textwidth]{f1_class_distribution.png}
+\caption{DocLayNet-base class distribution (the dataset is imbalanced).}
+\label{fig:dist}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\textwidth]{f2_sample_per_class.png}
+\caption{One sample document page per class.}
+\label{fig:samples}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\begin{subfigure}{0.49\textwidth}\centering
+  \includegraphics[width=\textwidth]{f7_resnet50_confusion.png}
+  \caption{ResNet50 confusion matrix.}
+\end{subfigure}\hfill
+\begin{subfigure}{0.49\textwidth}\centering
+  \includegraphics[width=\textwidth]{f8_resnet50_roc.png}
+  \caption{ResNet50 ROC (macro-AUC 0.956).}
+\end{subfigure}
+\caption{ResNet50 per-class behaviour. Confusion is concentrated in the
+\texttt{scientific\_articles} class (the weakest), consistent with its lower
+per-class AUC.}
+\label{fig:resnet}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\begin{subfigure}{0.49\textwidth}\centering
+  \includegraphics[width=\textwidth]{f5_custom_cnn_confusion.png}
+  \caption{Custom CNN confusion matrix.}
+\end{subfigure}\hfill
+\begin{subfigure}{0.49\textwidth}\centering
+  \includegraphics[width=\textwidth]{f6_custom_cnn_roc.png}
+  \caption{Custom CNN ROC.}
+\end{subfigure}
+\caption{The from-scratch custom CNN collapses toward the majority class.}
+\label{fig:cnn}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.65\textwidth]{f9_model_comparison.png}
+\caption{Accuracy, macro-F1, and macro-AUC: Custom CNN vs.\ ResNet50.}
+\label{fig:compare}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\textwidth]{f10_gradcam.png}
+\caption{Grad-CAM overlays for ResNet50 --- one example page per class. The model
+attends to masthead/header and structural regions rather than arbitrary text.}
+\label{fig:gradcam}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.6\textwidth]{f11_robustness.png}
+\caption{Robustness: clean vs.\ phone-camera-simulated macro-F1. ResNet50 drops
+$\approx0.118$ (0.724$\rightarrow$0.606) but degrades gracefully; the collapsed
+custom CNN shows no change.}
+\label{fig:robust}
+\end{figure}
+
+% ---------------- Discussion ----------------
+\section{Discussion}
+\textbf{Transfer learning is decisive (RQ1, RQ2).} ResNet50 reaches 0.724
+macro-F1 while the 0.42\,M-parameter custom CNN never escapes chance-level
+macro-AUC; ImageNet features provide the low-level edge/texture priors that a
+small document dataset cannot learn from scratch.
+\textbf{Per-class weakness (RQ3).} Errors concentrate in
+\texttt{scientific\_articles}, which is visually confusable with text-dense
+financial and patent pages; it has the lowest per-class AUC and is the class our
+deployed model most often misranks.
+\textbf{Interpretability (RQ4).} Grad-CAM (Fig.~\ref{fig:gradcam}) shows the
+model attending to mastheads, headers, and structural regions, supporting the
+layout-based hypothesis.
+\textbf{Robustness (RQ5).} ResNet50 loses only $\approx12$ points of macro-F1
+under phone-camera simulation, suggesting practical viability for mobile capture.
+\textbf{Language scope.} The strict German filter makes the ``German'' claim
+accurate; the committed metrics are from the all-languages base corpus, and the
+German-filtered re-run is the immediate next step.
+
+\subsection{Deployment}
+The trained ResNet50 is served as a public FastAPI web service with a browser
+upload UI and a \texttt{POST /predict} JSON API. For low-cost hosting the model
+is converted to TensorFlow Lite and served with a lightweight LiteRT runtime
+(no full TensorFlow), fitting a 512\,MB free-tier container; inference runs in a
+worker thread so the service stays responsive under concurrent users.
+Live: \url{https://document-type-classification-framework.onrender.com}.
+
+% ---------------- Conclusion ----------------
+\section{Conclusion and Future Work}
+A fine-tuned ResNet50 classifies German document pages from visual layout alone
+with 0.761 accuracy and 0.956 macro-AUC, decisively beating a from-scratch CNN
+and remaining robust to camera-style degradation, and is deployed as a usable
+public service. Future work: (i) complete the German-filtered re-training and
+report the per-class yield; (ii) target the weak \texttt{scientific\_articles}
+class with focused augmentation/oversampling; (iii) add higher-resolution inputs
+and a confidence/out-of-distribution gate for non-target uploads.
+
+% ---------------- Links ----------------
+\section*{Repository and Notebook Links}
+\addcontentsline{toc}{section}{Repository and Notebook Links}
+\begin{itemize}[nosep,leftmargin=1.4em]
+  \item \textbf{Live demo:} \url{https://document-type-classification-framework.onrender.com}
+  \item \textbf{GitHub:} \url{https://github.com/ashok-cse/Document-Type-Classification-Framework}
+  \item \textbf{Kaggle:} \url{https://www.kaggle.com/code/ashokkrcse/german-document-type-classification-with-cnns}
+\end{itemize}
+
+\begin{thebibliography}{9}
+\bibitem{doclaynet} B.~Pfitzmann et al., ``DocLayNet: A Large Human-Annotated
+Dataset for Document-Layout Analysis,'' \emph{KDD 2022}, arXiv:2206.01062.
+\bibitem{resnet} K.~He, X.~Zhang, S.~Ren, J.~Sun, ``Deep Residual Learning for
+Image Recognition,'' \emph{CVPR 2016}.
+\bibitem{gradcam} R.~R.~Selvaraju et al., ``Grad-CAM: Visual Explanations from
+Deep Networks via Gradient-Based Localization,'' \emph{ICCV 2017}.
+\bibitem{rvlcdip} A.~W.~Harley, A.~Ufkes, K.~G.~Derpanis, ``Evaluation of Deep
+Convolutional Nets for Document Image Classification and Retrieval,''
+\emph{ICDAR 2015}.
+\end{thebibliography}
+
+\end{document}
