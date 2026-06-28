@@ -5,6 +5,7 @@ document types** using the DocLayNet-base page-image dataset.
 
 **Course:** Pattern Recognition — Phase 2 (Proposal + Code)
 **Author:** Ashok Kumar Meena
+**Live demo:** <https://ashokcse-document-type-classification-framework.hf.space> — upload a German page and get the predicted type, confidence, uncertainty, and a **live Grad-CAM** explanation (full-TensorFlow build on a free Hugging Face Space).
 
 ---
 

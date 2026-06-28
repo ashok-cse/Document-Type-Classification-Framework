@@ -5,4 +5,4 @@ Kaggle notebook (training + evaluation):
 https://www.kaggle.com/code/ashokkrcse/german-document-type-classification-with-cnns
 
 Live demo (inference web service):
-https://document-type-classification-framework.onrender.com
+https://ashokcse-document-type-classification-framework.hf.space

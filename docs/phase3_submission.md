@@ -68,7 +68,7 @@ update Table 1 / the numbers in the same Overleaf project (allowed until 11 July
 Use **`docs/presentation_outline.md`** — it has the 2-min demo script and the
 ~10-slide, 8-min deck with per-slide speaker notes and which figure to show.
 
-- **Demo:** record the live site **https://document-type-classification-framework.onrender.com**
+- **Demo:** record the live site **https://ashokcse-document-type-classification-framework.hf.space**
   (warm it up first — free tier cold-starts in 30–60 s).
 - **Slides:** build ~10 slides from the outline (PowerPoint/Google Slides/Beamer).
 - Export MP4 ≤ 10 min and submit per the course instructions.
@@ -79,7 +79,7 @@ Use **`docs/presentation_outline.md`** — it has the 2-min demo script and the
 
 | Item | URL |
 |---|---|
-| Live demo (frontend) | https://document-type-classification-framework.onrender.com |
+| Live demo (frontend) | https://ashokcse-document-type-classification-framework.hf.space |
 | GitHub repository | https://github.com/ashok-cse/Document-Type-Classification-Framework |
 | Kaggle notebook | https://www.kaggle.com/code/ashokkrcse/german-document-type-classification-with-cnns |
 | Overleaf report (edit link) | *(create per step 1, then paste here)* |

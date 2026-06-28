@@ -3,7 +3,7 @@
 **Total video: ≤ 10 minutes** — 2 min live demo + 8 min slides.
 Record with screen capture (e.g. OBS, Loom, QuickTime + slides).
 
-Live demo URL: **https://document-type-classification-framework.onrender.com**
+Live demo URL: **https://ashokcse-document-type-classification-framework.hf.space**
 (⚠️ free tier sleeps after ~15 min idle — open it 1–2 min before recording so the
 first request isn't a 30–60 s cold start.)
 
@@ -13,7 +13,7 @@ first request isn't a 30–60 s cold start.)
 
 Screen-record the browser at the live URL. Script:
 
-1. **(0:00–0:25)** "This is my German Document Type Classifier, live on Render.
+1. **(0:00–0:25)** "This is my German Document Type Classifier, live free on Hugging Face Spaces.
    It predicts the functional type of a scanned German document page from its
    visual layout alone — no OCR." Scroll the landing page briefly (hero, the six
    categories, how-it-works).
@@ -23,9 +23,10 @@ Screen-record the browser at the live URL. Script:
 3. **(1:10–1:40)** **Upload your own** page (drag a German PDF page exported as
    an image — e.g. from gesetze-im-internet or DEPATISnet, linked in the
    *Try it with a real German document* section). Show the result.
-4. **(1:40–2:00)** "Under the hood this is a fine-tuned ResNet50 served as a
-   TensorFlow-Lite model in a FastAPI container — same model evaluated in the
-   report." Cut to slides.
+4. **(1:40–2:00)** Point out the **Grad-CAM heatmap** in the result panel: "the
+   model attends to the masthead and layout regions, not OCR text." "Under the
+   hood this is a fine-tuned ResNet50 served via FastAPI on a free Hugging Face
+   Space — the same model evaluated in the report." Cut to slides.
 
 Fallback if the live site is slow: have a 30 s pre-recorded clip of the demo ready.
 
@@ -84,9 +85,10 @@ M.Sc. Software Engineering, UE Potsdam · Supervisor: Raja Hashim Ali.
   gracefully.
 
 ### Slide 9 — Deployment (50 s)
-- ResNet50 → TensorFlow Lite + LiteRT runtime (no full TF) → fits 512 MB free
-  tier on Render. Non-blocking worker-thread inference; FastAPI `POST /predict`.
-- One public URL, browser UI + JSON API. *(Reference the demo just shown.)*
+- Deployed **free on Hugging Face Spaces** (full TensorFlow, ~16 GB CPU): serves
+  the UI + API **and a live Grad-CAM overlay + uncertainty** per prediction.
+- Non-blocking worker-thread inference; one public URL (browser UI + JSON API).
+- (A 512 MB TFLite build also exists for Render free, but it cannot run Grad-CAM.)
 
 ### Slide 10 — Conclusion & future work (40 s)
 - A fine-tuned ResNet50 classifies German pages from layout alone at 0.761 acc /
@@ -98,7 +100,7 @@ M.Sc. Software Engineering, UE Potsdam · Supervisor: Raja Hashim Ali.
 ---
 
 ## Recording checklist
-- [ ] Warm up the Render URL before recording (avoid cold start).
+- [ ] Warm up the HF Space URL before recording (avoid cold start).
 - [ ] 1080p screen capture; mic test.
 - [ ] Demo clip ≤ 2:00; slides ≤ 8:00; total ≤ 10:00.
 - [ ] Export MP4; upload per course instructions.
