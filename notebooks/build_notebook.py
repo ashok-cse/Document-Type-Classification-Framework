@@ -51,9 +51,9 @@ model, and evaluates robustness to phone-camera-style degradations.
 md("## 0. Environment setup\n\nInstall any libraries not pre-installed on Kaggle.")
 
 code(
-    """# huggingface_hub is pre-installed on Kaggle; no installs needed for the
-# data pipeline. We still rely on the standard ML libraries below.
-!pip install -q -U huggingface_hub"""
+    """# huggingface_hub is pre-installed on Kaggle. langdetect powers the strict
+# German-language filter in section 1. The rest are standard ML libraries.
+!pip install -q -U huggingface_hub langdetect"""
 )
 
 code(
@@ -76,12 +76,16 @@ from sklearn.metrics import (
 )
 from sklearn.preprocessing import label_binarize
 
+from langdetect import detect_langs, DetectorFactory
+from langdetect.lang_detect_exception import LangDetectException
+
 warnings.filterwarnings('ignore')
 print('TensorFlow:', tf.__version__)
 print('GPU available:', bool(tf.config.list_physical_devices('GPU')))
 
 SEED = 42
 random.seed(SEED); np.random.seed(SEED); tf.random.set_seed(SEED)
+DetectorFactory.seed = SEED  # make langdetect deterministic across runs
 """
 )
 
@@ -105,6 +109,15 @@ CLASS_NAMES = [
     'financial_reports', 'scientific_articles', 'laws_and_regulations',
     'government_tenders', 'manuals', 'patents',
 ]
+
+# --- Strict German-language filter -----------------------------------------
+# DocLayNet is ~95% English and only ~2.5% German. We keep ONLY pages whose
+# annotation text is confidently detected as German, so the "German" claim is
+# accurate (at the cost of a smaller, cleaner set). Set STRICT_GERMAN=False to
+# keep all languages for comparison.
+STRICT_GERMAN   = True   # gate pages on detected language
+GERMAN_MIN_PROB = 0.90   # min langdetect probability for 'de'
+GERMAN_MIN_TEXT = 40     # min chars of page text required to trust detection
 """
 )
 
@@ -116,7 +129,11 @@ md(
     """## 1. Download and parse DocLayNet-base directly
 
 We use the data files of `pierreguillou/DocLayNet-base` — ~8,000 pages across
-the six DocLayNet categories.
+the six DocLayNet categories. DocLayNet is ~95% English, so we apply a **strict
+German-language filter**: each page's annotation text is run through
+`langdetect`, and only pages confidently classified as German (`p ≥
+GERMAN_MIN_PROB`) are kept. This keeps the "German" claim honest at the cost of a
+smaller training set; the per-class yield is reported below.
 
 > **Note on dataset loading.** Both `pierreguillou/DocLayNet-large` and
 > `pierreguillou/DocLayNet-base` ship with custom HuggingFace loader scripts
@@ -169,29 +186,61 @@ print('Top-level entries:', top[:10])
 )
 
 code(
-    """# 4. Walk the extracted tree for JSON annotations, read the doc_category,
-#    locate the matching PNG, resize it to 224x224 and save as JPEG. Build the
-#    index_df used by every downstream cell.
+    """# 4. Walk the extracted tree for JSON annotations. For each page: read the
+#    doc_category, extract the annotation text, and (when STRICT_GERMAN) keep the
+#    page ONLY if its text is confidently detected as German. Matching PNGs are
+#    resized to 224x224 and saved as JPEG. Builds index_df and per-class yield
+#    stats (scan_stats) reported in the next cell.
 import json
 
-# DocLayNet annotation JSONs sit next to their PNGs and contain the
-# doc_category in metadata. We support a couple of layout variants.
-def _doc_category(meta: dict) -> str | None:
+# DocLayNet annotation JSONs sit next to their PNGs and carry the doc_category
+# in metadata. We support a couple of layout variants.
+def _doc_category(meta: dict):
     md_block = meta.get('metadata') or {}
     return (md_block.get('doc_category')
             or meta.get('doc_category')
             or md_block.get('original-category-doc'))
 
+def _page_text(meta: dict) -> str:
+    '''Concatenate whatever text the annotation carries (robust to variants).'''
+    parts = []
+    for c in (meta.get('cells') or meta.get('form') or []):
+        if isinstance(c, dict):
+            t = c.get('text') or c.get('label')
+            if t:
+                parts.append(str(t))
+    texts = meta.get('texts')
+    if isinstance(texts, list):
+        for t in texts:
+            if isinstance(t, str):
+                parts.append(t)
+            elif isinstance(t, list):
+                parts.extend(str(x) for x in t)
+    return ' '.join(parts).strip()
+
+def _german_prob(text: str):
+    '''langdetect P(German), or None when there is too little text to decide.'''
+    if len(text) < GERMAN_MIN_TEXT:
+        return None
+    try:
+        for lang in detect_langs(text):
+            if lang.lang == 'de':
+                return lang.prob
+        return 0.0
+    except LangDetectException:
+        return None
+
 all_jsons = list(EXTRACT_DIR.rglob('*.json'))
 print(f'Found {len(all_jsons):,} JSON annotations.')
 
 INDEX = []
-missing_png = 0
-no_category = 0
+missing_png = no_category = 0
+# Per-class yield: pages scanned (any language) vs. German pages kept.
+scan_stats = {c: {'scanned': 0, 'german': 0} for c in CLASS_NAMES}
+reject = Counter()  # why pages were dropped by the German gate
 t0 = time.time()
 
 for j_path in all_jsons:
-    # Pull the doc_category out of the JSON.
     try:
         with open(j_path) as f:
             meta = json.load(f)
@@ -201,9 +250,20 @@ for j_path in all_jsons:
     if not doc_cat:
         no_category += 1
         continue
+    if doc_cat in scan_stats:
+        scan_stats[doc_cat]['scanned'] += 1
 
-    # Locate the corresponding PNG. Common layouts: same dir with .png,
-    # or sibling 'PNG' / 'images' directory.
+    # Strict German gate — drop confidently-non-German / too-short pages.
+    if STRICT_GERMAN:
+        prob = _german_prob(_page_text(meta))
+        if prob is None:
+            reject['too_little_text'] += 1
+            continue
+        if prob < GERMAN_MIN_PROB:
+            reject['not_german'] += 1
+            continue
+
+    # Locate the corresponding PNG (same dir, or sibling 'PNG'/'images').
     candidates = [
         j_path.with_suffix('.png'),
         j_path.parent.parent / 'PNG' / (j_path.stem + '.png'),
@@ -214,7 +274,6 @@ for j_path in all_jsons:
         missing_png += 1
         continue
 
-    # Persist as a 224x224 RGB JPEG in DATA_DIR/<class>/<id>.jpg.
     out_dir = DATA_DIR / doc_cat
     out_dir.mkdir(exist_ok=True)
     out_jpg = out_dir / f'{png_path.stem}.jpg'
@@ -223,18 +282,64 @@ for j_path in all_jsons:
             (IMG_SIZE, IMG_SIZE), Image.BILINEAR
         ).save(out_jpg, 'JPEG', quality=92)
     INDEX.append({'path': str(out_jpg), 'label': doc_cat})
+    if doc_cat in scan_stats:
+        scan_stats[doc_cat]['german'] += 1
 
     if len(INDEX) % 500 == 0:
         print(f'  kept {len(INDEX):,}  ·  {time.time() - t0:.0f}s')
 
-print(f'Done in {time.time() - t0:.0f}s. '
-      f'Kept {len(INDEX):,} pages. missing_png={missing_png} no_category={no_category}')
+print(f'Done in {time.time() - t0:.0f}s. Kept {len(INDEX):,} German pages '
+      f'(STRICT_GERMAN={STRICT_GERMAN}). '
+      f'missing_png={missing_png} no_category={no_category} '
+      f'rejected={dict(reject)}')
 
 index_df = pd.DataFrame(INDEX)
 index_df.to_csv(DATA_DIR / 'index.csv', index=False)
 print(f'Classes seen: {sorted(index_df[\"label\"].unique())}')
 print(index_df['label'].value_counts())
 index_df.head()
+"""
+)
+
+md(
+    """### German-language yield report
+
+DocLayNet is overwhelmingly English (~95%); only ~2.5% of pages are German. The
+table below shows, per class, how many pages were scanned (all languages) versus
+how many survived the strict German filter — i.e. how much genuinely-German data
+each category actually contributes. Watch for classes with a very low German
+count: they are the ones most at risk of being under-represented after the split.
+"""
+)
+
+code(
+    """# Per-class German yield (scanned vs. kept) + a saved report.
+rows = []
+for c in CLASS_NAMES:
+    s, g = scan_stats[c]['scanned'], scan_stats[c]['german']
+    rows.append({'class': c, 'scanned': s, 'german_kept': g,
+                 'german_rate': (g / s) if s else 0.0})
+report = pd.DataFrame(rows)
+tot_s, tot_g = report['scanned'].sum(), report['german_kept'].sum()
+report.loc[len(report)] = {'class': 'TOTAL', 'scanned': tot_s, 'german_kept': tot_g,
+                           'german_rate': (tot_g / tot_s) if tot_s else 0.0}
+
+print(report.assign(german_rate=lambda d: (d['german_rate'] * 100).round(1)
+                    .astype(str) + '%').to_string(index=False))
+report.to_csv(FIG_DIR / 't0_german_yield.csv', index=False)
+
+# Grouped bar: scanned (all languages) vs. German kept, per class.
+x = np.arange(len(CLASS_NAMES)); w = 0.4
+fig, ax = plt.subplots(figsize=(9, 4))
+ax.bar(x - w / 2, [scan_stats[c]['scanned'] for c in CLASS_NAMES], w,
+       label='scanned (all languages)', color='#94a3b8')
+ax.bar(x + w / 2, [scan_stats[c]['german'] for c in CLASS_NAMES], w,
+       label='German kept', color='#16a34a')
+ax.set_xticks(x); ax.set_xticklabels(CLASS_NAMES, rotation=30, ha='right')
+ax.set_ylabel('pages'); ax.set_title('German-language yield per class')
+ax.legend(); plt.tight_layout()
+plt.savefig(FIG_DIR / 'f0_german_yield.png', dpi=150, bbox_inches='tight')
+plt.show()
 """
 )
 
